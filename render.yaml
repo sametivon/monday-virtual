@@ -1,0 +1,86 @@
+# Render Blueprint — deploys the two long-running Node services (api + realtime)
+# as free web services. The Next.js web app deploys on Vercel (see vercel.json),
+# Postgres on Neon, Redis on Upstash, object storage on Cloudflare R2.
+#
+# Free instances SLEEP after ~15 min idle (~30–50s cold start on the next hit).
+# Mitigate with a keep-alive ping to /health every ~10 min (cron-job.org /
+# UptimeRobot, free), or upgrade either service to Starter ($7/mo) to remove
+# sleep. See docs/LAUNCH.md.
+#
+# Render injects $PORT; the env schemas map it onto API_PORT / REALTIME_PORT.
+# Secrets marked `sync: false` are set in the Render dashboard, never committed.
+
+services:
+  - type: web
+    name: mvs-api
+    runtime: node
+    plan: free
+    region: frankfurt # closest to mondayvirtual.eu / EU users
+    rootDir: .
+    buildCommand: corepack enable && pnpm install --frozen-lockfile=false && pnpm turbo run build --filter=@mvs/api
+    startCommand: pnpm --filter @mvs/api start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WEB_PUBLIC_URL # the Vercel app URL, e.g. https://mondayvirtual.eu
+        sync: false
+      - key: DATABASE_URL # Neon POOLED connection string
+        sync: false
+      - key: REDIS_URL # Upstash rediss:// URL (TLS)
+        sync: false
+      - key: JWT_SECRET # 32-byte hex — MUST match mvs-realtime
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY # exactly 32-byte hex (64 chars)
+        sync: false
+      - key: MONDAY_CLIENT_ID
+        sync: false
+      - key: MONDAY_CLIENT_SECRET
+        sync: false
+      - key: MONDAY_SIGNING_SECRET
+        sync: false
+      - key: MONDAY_OAUTH_REDIRECT_URI # https://<this-service>.onrender.com/auth/monday/callback
+        sync: false
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: S3_ENDPOINT # Cloudflare R2 S3 endpoint
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_PUBLIC_BASE_URL
+        sync: false
+      - key: SENTRY_DSN # optional — leave unset to disable
+        sync: false
+
+  - type: web
+    name: mvs-realtime
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: .
+    buildCommand: corepack enable && pnpm install --frozen-lockfile=false && pnpm turbo run build --filter=@mvs/realtime
+    startCommand: pnpm --filter @mvs/realtime start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WEB_PUBLIC_URL
+        sync: false
+      - key: DATABASE_URL # Neon POOLED (realtime reads events/presence)
+        sync: false
+      - key: REDIS_URL # same Upstash instance as the api
+        sync: false
+      - key: JWT_SECRET # MUST be identical to mvs-api
+        sync: false
+      - key: SENTRY_DSN
+        sync: false

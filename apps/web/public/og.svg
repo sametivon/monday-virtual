@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f3f0ff"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#efeaff"/>
+      <stop offset="1" stop-color="#e2dbff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- headline: emotional, big, thumbnail-legible (#5 #18) -->
+  <text x="80" y="180" font-family="Inter, system-ui, sans-serif" font-size="76" font-weight="800" fill="#111111">Your team is online.</text>
+  <text x="80" y="270" font-family="Inter, system-ui, sans-serif" font-size="76" font-weight="800" fill="#111111">They’re just not <tspan fill="#6c5ce7">together</tspan>.</text>
+  <text x="80" y="340" font-family="Inter, system-ui, sans-serif" font-size="32" font-weight="500" fill="#5b6472">A 3D office your team walks into — inside monday.com.</text>
+
+  <!-- mini office scene -->
+  <g transform="translate(80 400)">
+    <rect width="1040" height="170" rx="20" fill="url(#floor)"/>
+    <!-- board on wall -->
+    <g transform="translate(60 26)">
+      <rect width="220" height="118" rx="10" fill="#ffffff" stroke="#d9d2f5"/>
+      <rect x="16" y="16" width="90" height="12" rx="6" fill="#6c5ce7"/>
+      <rect x="16" y="40" width="188" height="9" rx="4" fill="#e3e8ef"/>
+      <rect x="16" y="58" width="160" height="9" rx="4" fill="#e3e8ef"/>
+      <rect x="16" y="86" width="54" height="18" rx="9" fill="#00b894"/>
+      <rect x="78" y="86" width="54" height="18" rx="9" fill="#fdcb6e"/>
+      <rect x="140" y="86" width="54" height="18" rx="9" fill="#e17055"/>
+    </g>
+    <!-- table -->
+    <ellipse cx="600" cy="95" rx="150" ry="48" fill="#ffffff" stroke="#d9d2f5"/>
+    <!-- avatars -->
+    <g>
+      <g transform="translate(520 70)"><rect x="-14" y="0" width="28" height="30" rx="10" fill="#6c5ce7"/><circle cx="0" cy="-9" r="11" fill="#6c5ce7"/></g>
+      <g transform="translate(690 70)"><rect x="-14" y="0" width="28" height="30" rx="10" fill="#00b894"/><circle cx="0" cy="-9" r="11" fill="#00b894"/></g>
+      <g transform="translate(605 120)"><rect x="-14" y="0" width="28" height="30" rx="10" fill="#e17055"/><circle cx="0" cy="-9" r="11" fill="#e17055"/></g>
+      <g transform="translate(870 60)"><rect x="-14" y="0" width="28" height="30" rx="10" fill="#0984e3"/><circle cx="0" cy="-9" r="11" fill="#0984e3"/></g>
+      <g transform="translate(950 110)"><rect x="-14" y="0" width="28" height="30" rx="10" fill="#e84393"/><circle cx="0" cy="-9" r="11" fill="#e84393"/></g>
+    </g>
+    <circle cx="600" cy="120" r="78" fill="none" stroke="#6c5ce7" stroke-dasharray="5 7" opacity="0.55"/>
+  </g>
+
+  <!-- brand mark -->
+  <g transform="translate(80 60)">
+    <rect width="40" height="40" rx="11" fill="#6c5ce7"/>
+    <circle cx="14" cy="20" r="5" fill="#fff"/>
+    <circle cx="26" cy="20" r="5" fill="#fff" opacity="0.7"/>
+    <text x="54" y="29" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="800" fill="#111111">MondayVirtual</text>
+  </g>
+</svg>

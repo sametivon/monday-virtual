@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Defaults; overridden at runtime from the tenant palette. */
+  --brand-primary: #6c5ce7;
+  --brand-secondary: #00b894;
+  --brand-accent: #fdcb6e;
+  --brand-bg: #0f1115;
+  --brand-surface: #1a1d24;
+  --brand-text: #f5f6fa;
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--brand-bg);
+  color: var(--brand-text);
+  font-family: var(--font-sans);
+  overflow: hidden; /* the 3D canvas owns the viewport */
+}
+
+#__next,
+main {
+  height: 100%;
+}
+
+/* Marketing pages need normal document scrolling + a light canvas, overriding
+   the 3D-app globals above (which lock the viewport at 100% for the WebGL
+   canvas). Releasing the height cap lets the long page grow naturally. */
+html:has(.marketing-scroll),
+body:has(.marketing-scroll) {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+  background: #ffffff;
+}
+body:has(.marketing-scroll) main {
+  height: auto;
+}
+.marketing-scroll {
+  scroll-behavior: smooth;
+}
+
+/* In-world emoji overlays (reactions + raised hand), rendered via drei Html. */
+.mvs-reaction {
+  font-size: 30px;
+  animation: mvs-float-up 2.1s ease-out forwards;
+}
+
+@keyframes mvs-float-up {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-70px);
+    opacity: 0;
+  }
+}
+
+.mvs-hand {
+  font-size: 24px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+  animation: mvs-hand-bob 1.2s ease-in-out infinite;
+}
+
+@keyframes mvs-hand-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}

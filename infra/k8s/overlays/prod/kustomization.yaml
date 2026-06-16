@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mvs
+resources:
+  - ../../base
+
+# Pin images to a release tag in CI (kustomize edit set image ...).
+images:
+  - name: ghcr.io/your-org/mvs-api
+    newTag: latest
+  - name: ghcr.io/your-org/mvs-realtime
+    newTag: latest
+  - name: ghcr.io/your-org/mvs-web
+    newTag: latest
+
+# Web public config (non-secret). Secrets come from `mvs-secrets`, which is
+# created out-of-band (sealed-secrets / External Secrets) — never committed.
+configMapGenerator:
+  - name: mvs-web-config
+    literals:
+      - NEXT_PUBLIC_API_URL=https://api.example.com
+      - NEXT_PUBLIC_REALTIME_URL=https://rt.example.com
+
+patches:
+  - target: { kind: Deployment, name: api }
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3

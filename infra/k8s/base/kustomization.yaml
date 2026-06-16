@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Base manifests for the self-host path. Overlays (dev/staging/prod) patch
+# images, replicas, and env. Postgres/Redis are expected to be managed services
+# referenced via the `mvs-secrets` Secret; LiveKit is LiveKit Cloud or a
+# separate self-hosted SFU chart.
+namespace: mvs
+
+resources:
+  - namespace.yaml
+  - api-deployment.yaml
+  - api-service.yaml
+  - realtime-deployment.yaml
+  - realtime-service.yaml
+  - web-deployment.yaml
+  - web-service.yaml
+  - ingress.yaml
+  - hpa.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: monday-virtual-spaces

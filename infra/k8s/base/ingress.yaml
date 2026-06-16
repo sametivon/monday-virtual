@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mvs
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: '3600'
+    nginx.ingress.kubernetes.io/proxy-send-timeout: '3600'
+    # WebSocket upgrade for the realtime host.
+    nginx.ingress.kubernetes.io/proxy-http-version: '1.1'
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: app.example.com # web — patched per overlay
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: web, port: { number: 80 } } }
+    - host: api.example.com # control plane
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: api, port: { number: 80 } } }
+    - host: rt.example.com # realtime (Socket.IO)
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: realtime, port: { number: 80 } } }

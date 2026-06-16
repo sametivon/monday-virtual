@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mvs-dev
+resources:
+  - ../../base
+
+configMapGenerator:
+  - name: mvs-web-config
+    literals:
+      - NEXT_PUBLIC_API_URL=https://api.dev.example.com
+      - NEXT_PUBLIC_REALTIME_URL=https://rt.dev.example.com
+
+# Single replica in dev to save cost.
+patches:
+  - target: { kind: Deployment }
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1

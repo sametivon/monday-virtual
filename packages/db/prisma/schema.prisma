@@ -1,0 +1,353 @@
+// Monday Virtual Spaces — Prisma schema
+// Multi-tenant (shared DB / shared schema / row-level isolation via tenantId).
+// Enums mirror packages/shared/src/enums.ts — keep both in sync.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  // Runtime uses the POOLED connection (Neon pooler / PgBouncer). Migrations
+  // need a DIRECT (unpooled) connection — Prisma uses directUrl when set, and
+  // falls back to url when DIRECT_DATABASE_URL is absent (local dev).
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_DATABASE_URL")
+  extensions = [pgcrypto]
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────────────────────────────────────
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+}
+
+enum UserPresenceStatus {
+  ONLINE
+  AWAY
+  BUSY
+  OFFLINE
+}
+
+enum RoleKey {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  MODERATOR
+  PRESENTER
+  MEMBER
+  GUEST
+}
+
+enum SpaceType {
+  LOBBY
+  AUDITORIUM
+  MEETING
+  WORKSPACE
+  TRAINING
+  EXPO
+  LOUNGE
+}
+
+enum ObjectType {
+  SCREEN
+  PORTAL
+  WHITEBOARD
+  DESK
+  CHAIR
+  MEETING_TABLE
+  DASHBOARD
+  LINK
+  VIDEO
+  SPAWN_POINT
+}
+
+enum EventType {
+  CONFERENCE
+  WORKSHOP
+  TOWNHALL
+  TRAINING
+}
+
+enum EventStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+enum ChatScope {
+  GLOBAL
+  ROOM
+  DIRECT
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Tenancy & identity
+// ──────────────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id              String       @id @default(cuid())
+  slug            String       @unique
+  name            String
+  mondayAccountId String       @unique
+  status          TenantStatus @default(TRIAL)
+
+  branding   Branding?
+  users      User[]
+  roles      Role[]
+  spaces     Space[]
+  events     Event[]
+  mondayAuth MondayOAuthToken?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([mondayAccountId])
+  @@index([status])
+}
+
+model Branding {
+  id          String  @id @default(cuid())
+  tenantId    String  @unique
+  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productName String  @default("Virtual Spaces")
+  logoUrl     String?
+  palette     Json    @default("{}")
+  theme       Json?
+
+  updatedAt DateTime @updatedAt
+}
+
+model Role {
+  id          String  @id @default(cuid())
+  tenantId    String
+  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  key         RoleKey
+  name        String
+  permissions Json    @default("[]")
+  users       User[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+}
+
+model User {
+  id           String             @id @default(cuid())
+  tenantId     String
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  mondayUserId String
+  email        String
+  name         String
+  avatarConfig Json               @default("{}")
+  company      String?
+  jobTitle     String?
+  status       UserPresenceStatus @default(OFFLINE)
+  roleId       String?
+  role         Role?              @relation(fields: [roleId], references: [id])
+  lastSeenAt   DateTime?
+
+  sessions      Session[]
+  registrations EventRegistration[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([tenantId, mondayUserId])
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model Session {
+  id               String   @id @default(cuid())
+  tenantId         String
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String
+  userAgent        String?
+  ip               String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
+}
+
+model MondayOAuthToken {
+  id           String    @id @default(cuid())
+  tenantId     String    @unique
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  accessToken  String // AES-256-GCM encrypted (app-layer)
+  refreshToken String?
+  scopes       String
+  expiresAt    DateTime?
+  updatedAt    DateTime  @updatedAt
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// World: spaces & objects
+// ──────────────────────────────────────────────────────────────────────────
+
+model Space {
+  id          String        @id @default(cuid())
+  tenantId    String
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type        SpaceType
+  name        String
+  slug        String
+  sceneConfig Json          @default("{}")
+  isPublished Boolean       @default(false)
+  capacity    Int           @default(100)
+  objects     SceneObject[]
+  events      Event[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([tenantId, isPublished])
+}
+
+model SceneObject {
+  id          String     @id @default(cuid())
+  tenantId    String
+  spaceId     String
+  space       Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  type        ObjectType
+  transform   Json       @default("{}")
+  config      Json       @default("{}")
+  interaction Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([spaceId])
+  @@index([tenantId])
+}
+
+model WhiteboardDoc {
+  id        String   @id @default(cuid())
+  tenantId  String
+  spaceId   String
+  objectId  String   @unique
+  snapshot  Json     @default("{}")
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, spaceId])
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Events
+// ──────────────────────────────────────────────────────────────────────────
+
+model Event {
+  id       String      @id @default(cuid())
+  tenantId String
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  spaceId  String?
+  space    Space?      @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  type     EventType
+  title    String
+  startsAt DateTime
+  endsAt   DateTime
+  agenda   Json?
+  speakers Json?
+  status   EventStatus @default(SCHEDULED)
+
+  registrations EventRegistration[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, startsAt])
+  @@index([tenantId, status])
+}
+
+model EventRegistration {
+  id          String   @id @default(cuid())
+  tenantId    String
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attended    Boolean  @default(false)
+  registeredAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+  @@index([tenantId])
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Chat
+// ──────────────────────────────────────────────────────────────────────────
+
+model ChatMessage {
+  id         String    @id @default(cuid())
+  tenantId   String
+  scope      ChatScope
+  spaceId    String?
+  fromUserId String
+  toUserId   String?
+  body       String
+  mentions   Json?
+  createdAt  DateTime  @default(now())
+
+  @@index([tenantId, spaceId, createdAt])
+  @@index([tenantId, scope, createdAt])
+  @@index([tenantId, toUserId, createdAt])
+}
+
+/// Append-only whiteboard drawing ops (stroke/sticky/erase/clear), replayed
+/// in order to materialize a board. Compaction is a Phase-3 concern.
+model WhiteboardOp {
+  id        String   @id @default(cuid())
+  tenantId  String
+  objectId  String
+  userId    String
+  op        Json
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, objectId, createdAt])
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Analytics & audit (append-only)
+// ──────────────────────────────────────────────────────────────────────────
+
+model AnalyticsEvent {
+  id       String   @id @default(cuid())
+  tenantId String
+  userId   String?
+  spaceId  String?
+  type     String
+  payload  Json?
+  ts       DateTime @default(now())
+
+  @@index([tenantId, type, ts])
+  @@index([tenantId, spaceId, ts])
+}
+
+model AuditLog {
+  id       String   @id @default(cuid())
+  tenantId String
+  actorId  String?
+  action   String
+  target   String?
+  meta     Json?
+  ts       DateTime @default(now())
+
+  @@index([tenantId, ts])
+  @@index([tenantId, action, ts])
+}

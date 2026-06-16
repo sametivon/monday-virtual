@@ -1,0 +1,26 @@
+# Build context = repo root:  docker build -f infra/docker/Dockerfile.web .
+# Web is typically deployed to Vercel; this image is for self-host / K8s.
+FROM node:22-alpine AS base
+RUN corepack enable
+WORKDIR /app
+
+FROM base AS build
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* turbo.json tsconfig.base.json ./
+COPY packages ./packages
+COPY apps/web ./apps/web
+RUN pnpm install --frozen-lockfile=false
+RUN pnpm --filter @mvs/shared build \
+  && pnpm --filter @mvs/web build
+
+FROM node:22-alpine AS runner
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+WORKDIR /app
+COPY --from=build /app/apps/web/.next ./apps/web/.next
+COPY --from=build /app/apps/web/public ./apps/web/public
+COPY --from=build /app/apps/web/package.json ./apps/web/package.json
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages ./packages
+WORKDIR /app/apps/web
+EXPOSE 3000
+CMD ["node_modules/.bin/next", "start", "-p", "3000"]

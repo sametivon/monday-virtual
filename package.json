@@ -1,0 +1,36 @@
+{
+  "name": "monday-virtual-spaces",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monday Virtual Spaces — white-label, multi-tenant 3D virtual workspace embedded in monday.com",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rimraf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "db:generate": "pnpm --filter @mvs/db generate",
+    "db:migrate": "pnpm --filter @mvs/db migrate",
+    "db:push": "pnpm --filter @mvs/db push",
+    "db:seed": "pnpm --filter @mvs/db seed",
+    "db:studio": "pnpm --filter @mvs/db studio",
+    "dev:token": "node scripts/dev-token.cjs",
+    "docker:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infra/docker/docker-compose.yml down"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "prettier": "^3.4.2",
+    "puppeteer-core": "^25.1.0",
+    "rimraf": "^6.0.1",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,26 @@
+# Build context = repo root:  docker build -f infra/docker/Dockerfile.api .
+FROM node:22-alpine AS base
+RUN corepack enable
+WORKDIR /app
+
+# ── deps + build ───────────────────────────────────────────────────────────
+FROM base AS build
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* turbo.json tsconfig.base.json ./
+COPY packages ./packages
+COPY apps/api ./apps/api
+RUN pnpm install --frozen-lockfile=false
+# Generate Prisma client + build shared packages, then the API.
+RUN pnpm --filter @mvs/db generate \
+  && pnpm --filter @mvs/shared --filter @mvs/config --filter @mvs/db build \
+  && pnpm --filter @mvs/api build
+RUN pnpm --filter @mvs/api --prod deploy /out
+
+# ── runtime ────────────────────────────────────────────────────────────────
+FROM node:22-alpine AS runner
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build /out/node_modules ./node_modules
+COPY --from=build /app/apps/api/dist ./dist
+COPY --from=build /app/packages ./packages
+EXPOSE 4000
+CMD ["node", "dist/main.js"]

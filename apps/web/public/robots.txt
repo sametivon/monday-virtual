@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /home
+# The app itself is auth-gated (loads inside the monday.com iframe) — keep it out of the index.
+Disallow: /space/
+
+Sitemap: https://mondayvirtual.eu/sitemap.xml
