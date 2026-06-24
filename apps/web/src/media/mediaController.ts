@@ -110,8 +110,25 @@ class MediaController {
   async toggleMic(): Promise<void> {
     if (!this.room) return;
     const next = !this.room.localParticipant.isMicrophoneEnabled;
-    await this.room.localParticipant.setMicrophoneEnabled(next);
-    useMediaStore.setState({ micEnabled: next });
+    try {
+      await this.room.localParticipant.setMicrophoneEnabled(next);
+      // Read the real state back rather than assuming — a denied prompt leaves
+      // the mic off even though the call "resolved".
+      useMediaStore.setState({ micEnabled: this.room.localParticipant.isMicrophoneEnabled });
+    } catch (err) {
+      // getUserMedia rejected. The most common cause in-frame is monday's
+      // Permissions Policy not delegating `microphone` to the iframe — same
+      // class of block as screen-share — so point the user at the pop-out.
+      const message = (err as Error).message ?? '';
+      const blocked = /permissions policy|NotAllowed|denied|microphone|not allowed/i.test(message);
+      useMediaStore.setState({
+        micEnabled: false,
+        notice: blocked
+          ? 'Microphone is blocked inside monday.com — click "↗ Pop out" (top right) to talk from a full tab, or allow mic access for this site.'
+          : `Mic failed: ${message}`,
+      });
+      setTimeout(() => useMediaStore.setState({ notice: null }), 8000);
+    }
   }
 
   async toggleCamera(): Promise<void> {

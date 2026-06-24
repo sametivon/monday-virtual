@@ -108,7 +108,7 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
         <RemoteAvatars />
       </Suspense>
 
-      <CameraRig />
+      <CameraRig bounds={scene.bounds} />
       <OrbitControls
         makeDefault
         enablePan={false}
