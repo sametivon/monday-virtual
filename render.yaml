@@ -17,7 +17,7 @@ services:
     plan: free
     region: frankfurt # closest to mondayvirtual.eu / EU users
     rootDir: .
-    buildCommand: corepack enable && pnpm install --frozen-lockfile=false && pnpm turbo run build --filter=@mvs/api
+    buildCommand: pnpm install --frozen-lockfile=false && pnpm turbo run build --filter=@mvs/api
     startCommand: pnpm --filter @mvs/api start:prod
     healthCheckPath: /health
     envVars:
@@ -26,6 +26,8 @@ services:
       - key: WEB_PUBLIC_URL # the Vercel app URL, e.g. https://mondayvirtual.eu
         sync: false
       - key: DATABASE_URL # Neon POOLED connection string
+        sync: false
+      - key: DIRECT_DATABASE_URL # Neon DIRECT (unpooled) — required by Prisma generate at build time
         sync: false
       - key: REDIS_URL # Upstash rediss:// URL (TLS)
         sync: false
@@ -68,7 +70,7 @@ services:
     plan: free
     region: frankfurt
     rootDir: .
-    buildCommand: corepack enable && pnpm install --frozen-lockfile=false && pnpm turbo run build --filter=@mvs/realtime
+    buildCommand: pnpm install --frozen-lockfile=false && pnpm turbo run build --filter=@mvs/realtime
     startCommand: pnpm --filter @mvs/realtime start:prod
     healthCheckPath: /health
     envVars:
@@ -77,6 +79,8 @@ services:
       - key: WEB_PUBLIC_URL
         sync: false
       - key: DATABASE_URL # Neon POOLED (realtime reads events/presence)
+        sync: false
+      - key: DIRECT_DATABASE_URL # Neon DIRECT — required by Prisma generate at build time
         sync: false
       - key: REDIS_URL # same Upstash instance as the api
         sync: false
