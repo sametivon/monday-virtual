@@ -29,7 +29,7 @@ export const DEFAULT_PALETTE: BrandingPalette = BrandingPaletteSchema.parse({});
  * refreshes stale ones at login (the scene editor will replace this with
  * explicit versioning).
  */
-export const SCENE_REV = 5;
+export const SCENE_REV = 6;
 
 /** Per-space-type default scene config. All validated at module load. */
 export const SCENE_PRESETS: Record<SpaceType, SceneConfig> = {
@@ -68,17 +68,17 @@ export const SCENE_PRESETS: Record<SpaceType, SceneConfig> = {
         panelColor: '#4a2c33',
         ceilingColor: '#262019',
         lightColor: '#ffe2b8',
-        wallHeight: 9,
+        wallHeight: 11,
       },
     },
     lighting: { ambientIntensity: 0.7, ambientColor: '#f3ecff', directionalIntensity: 1.2 },
-    bounds: { min: [-25, 0, -22], max: [25, 25, 18] },
+    bounds: { min: [-32, 0, -32], max: [32, 28, 24] },
     // Spawn well inside the room so the follow camera has headroom.
-    spawnPoints: [{ id: 'back', position: [0, 0, 8], rotation: Math.PI }],
+    spawnPoints: [{ id: 'back', position: [0, 0, 12], rotation: Math.PI }],
     // Auditorium uses near-uniform audience audio; widen falloff.
-    spatialAudio: { minDistance: 4, maxDistance: 40, rolloff: 'linear' },
+    spatialAudio: { minDistance: 4, maxDistance: 48, rolloff: 'linear' },
     // Anyone on the stage is heard at full volume by the whole space.
-    stage: { center: [0, 0, -12], size: [16, 6], height: 0.5 },
+    stage: { center: [0, 0, -24], size: [20, 7], height: 0.6 },
   }),
   [SpaceType.MEETING]: SceneConfigSchema.parse({
     environment: { skybox: 'apartment', groundColor: '#202a35' },
@@ -245,14 +245,14 @@ const LOBBY_OBJECTS: DefaultSceneObject[] = [
  * Portal targetSpaceIds are blank here — the API binds them to the tenant's
  * real space ids at provisioning time.
  */
-const STAGE_CENTER: [number, number] = [0, -12];
+const STAGE_CENTER: [number, number] = [0, -24];
 
 /** Curved theater rows: arcs of plush seats centered on the stage. */
 function audienceRows(): DefaultSceneObject[] {
   const chairs: DefaultSceneObject[] = [];
-  for (let row = 0; row < 4; row++) {
-    const radius = 10.5 + row * 2.6;
-    const seats = 9 + row * 2;
+  for (let row = 0; row < 5; row++) {
+    const radius = 11 + row * 2.8;
+    const seats = 11 + row * 2;
     const span = Math.PI * 0.62; // arc width
     for (let i = 0; i < seats; i++) {
       const angle = -span / 2 + (span * i) / (seats - 1);
@@ -273,29 +273,18 @@ function audienceRows(): DefaultSceneObject[] {
 }
 
 const AUDITORIUM_OBJECTS: DefaultSceneObject[] = [
-  // Main LED wall + two angled side screens (venue style).
+  // One large cinema-style LED wall on the back wall, behind the stage, so the
+  // whole audience reads it. Uniform scale keeps the 16:9 share undistorted.
   obj({
     type: ObjectType.SCREEN,
-    transform: t([0, 0, -19], 0, [1.9, 1.6, 1]),
+    transform: t([0, 0, -30.5], 0, [2.7, 2.7, 1]),
     config: { type: ObjectType.SCREEN, source: 'screenshare', label: 'Presentation' },
-    interaction: { onClick: 'open', permissionsRequired: [] },
-  }),
-  obj({
-    type: ObjectType.SCREEN,
-    transform: t([-13, 0, -16.5], 0.45, [1.2, 1.1, 1]),
-    config: { type: ObjectType.SCREEN, source: 'screenshare' },
-    interaction: { onClick: 'open', permissionsRequired: [] },
-  }),
-  obj({
-    type: ObjectType.SCREEN,
-    transform: t([13, 0, -16.5], -0.45, [1.2, 1.1, 1]),
-    config: { type: ObjectType.SCREEN, source: 'screenshare' },
     interaction: { onClick: 'open', permissionsRequired: [] },
   }),
   ...audienceRows(),
   obj({
     type: ObjectType.PORTAL,
-    transform: t([18, 0, 12]),
+    transform: t([26, 0, 18]),
     config: { type: ObjectType.PORTAL, targetSpaceId: '', label: 'Lobby' },
     interaction: { onClick: 'teleport', permissionsRequired: [] },
   }),
