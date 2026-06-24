@@ -29,7 +29,7 @@ export const DEFAULT_PALETTE: BrandingPalette = BrandingPaletteSchema.parse({});
  * refreshes stale ones at login (the scene editor will replace this with
  * explicit versioning).
  */
-export const SCENE_REV = 7;
+export const SCENE_REV = 8;
 
 /** Per-space-type default scene config. All validated at module load. */
 export const SCENE_PRESETS: Record<SpaceType, SceneConfig> = {
@@ -68,11 +68,11 @@ export const SCENE_PRESETS: Record<SpaceType, SceneConfig> = {
         panelColor: '#4a2c33',
         ceilingColor: '#262019',
         lightColor: '#ffe2b8',
-        wallHeight: 11,
+        wallHeight: 15,
       },
     },
     lighting: { ambientIntensity: 0.7, ambientColor: '#f3ecff', directionalIntensity: 1.2 },
-    bounds: { min: [-32, 0, -32], max: [32, 28, 24] },
+    bounds: { min: [-32, 0, -32], max: [32, 32, 24] },
     // Spawn well inside the room so the follow camera has headroom.
     spawnPoints: [{ id: 'back', position: [0, 0, 12], rotation: Math.PI }],
     // Auditorium uses near-uniform audience audio; widen falloff.
@@ -277,7 +277,7 @@ const AUDITORIUM_OBJECTS: DefaultSceneObject[] = [
   // whole audience reads it. Uniform scale keeps the 16:9 share undistorted.
   obj({
     type: ObjectType.SCREEN,
-    transform: t([0, 0, -30.8], 0, [3, 3, 3]),
+    transform: t([0, 0, -30.8], 0, [4, 4, 4]),
     config: { type: ObjectType.SCREEN, source: 'screenshare', label: 'Presentation' },
     interaction: { onClick: 'open', permissionsRequired: [] },
   }),
