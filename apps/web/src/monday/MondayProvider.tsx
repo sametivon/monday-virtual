@@ -75,10 +75,22 @@ export function MondayProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-/** Read-and-delete the pop-out token so it can't be replayed from storage. */
+/**
+ * Read the pop-out token from the URL fragment and strip it so it can't be
+ * replayed from history. The fragment (not localStorage) is used because the
+ * in-iframe session's storage is partitioned under monday.com and invisible to
+ * a top-level pop-out tab. A legacy localStorage key is still consumed as a
+ * fallback for same-origin (non-iframe) pop-outs.
+ */
 function consumeHandoff(): string | null {
   if (typeof window === 'undefined') return null;
   try {
+    const match = /[#&]mvs_handoff=([^&]+)/.exec(window.location.hash);
+    if (match) {
+      const token = decodeURIComponent(match[1]);
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      return token || null;
+    }
     const raw = localStorage.getItem('mvs:handoff');
     if (!raw) return null;
     localStorage.removeItem('mvs:handoff');

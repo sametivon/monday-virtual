@@ -125,12 +125,15 @@ function Hud({ name }: { name: string }) {
   const [inIframe, setInIframe] = useState(false);
   useEffect(() => setInIframe(window.self !== window.top), []);
 
-  // Hand the session to a full tab via a one-shot localStorage key — the
-  // iframe can't get display-capture permission, a top-level tab can.
+  // Hand the session to a full tab — the iframe can't get display-capture
+  // permission, a top-level tab can. The token rides the URL fragment, NOT
+  // localStorage: inside the monday iframe our storage is partitioned under
+  // monday.com, so a top-level pop-out (mondayvirtual.eu) can't read it. The
+  // fragment never reaches the server; MondayProvider strips it on read.
   const popOut = () => {
     if (!api.token) return;
-    localStorage.setItem('mvs:handoff', JSON.stringify({ accessToken: api.token }));
-    window.open(window.location.pathname, '_blank', 'noopener');
+    const url = `${window.location.pathname}#mvs_handoff=${encodeURIComponent(api.token)}`;
+    window.open(url, '_blank', 'noopener');
   };
 
   return (
