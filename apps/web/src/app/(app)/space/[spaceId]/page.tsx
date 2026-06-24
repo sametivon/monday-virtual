@@ -14,10 +14,8 @@ import { media } from '@/media/mediaController';
 import { ChatPanel } from '@/ui/ChatPanel';
 import { DashboardModal } from '@/ui/DashboardModal';
 import { EditorPanel } from '@/ui/EditorPanel';
-import { MediaControls } from '@/ui/MediaControls';
 import { PresenceList } from '@/ui/PresenceList';
-import { ReactionBar } from '@/ui/ReactionBar';
-import { SlidesControl } from '@/ui/SlidesControl';
+import { SpaceDock } from '@/ui/SpaceDock';
 import { VideoTiles } from '@/ui/VideoTiles';
 import { WhiteboardModal } from '@/ui/WhiteboardModal';
 import type { SceneObjectDTO } from '@mvs/shared';
@@ -101,10 +99,8 @@ export default function SpacePage({ params }: { params: Promise<{ spaceId: strin
       </EngineErrorBoundary>
       <Hud name={manifest.name} />
       <PresenceList />
-      <MediaControls />
-      <SlidesControl manifest={manifest} onDeckChanged={loadManifest} />
       <EditorPanel manifest={manifest} onChanged={loadManifest} />
-      <ReactionBar />
+      <SpaceDock manifest={manifest} onDeckChanged={loadManifest} />
       <VideoTiles />
       <ChatPanel spaceId={spaceId} />
       {dashboard && (
