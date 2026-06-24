@@ -36,8 +36,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
-      # turbo's ^build dependency builds the workspace libs first (incl. the
-      # Prisma client), so an explicit generate step isn't needed.
+      # Explicit: `prisma generate` writes to node_modules/.prisma (outside
+      # turbo's tracked outputs), so relying on ^build doesn't reliably produce
+      # the typed client on a clean runner.
+      - name: Generate Prisma client
+        run: pnpm --filter @mvs/db generate
+
       - name: Typecheck
         run: pnpm typecheck
 
