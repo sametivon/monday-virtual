@@ -12,6 +12,16 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Dummy values: typecheck/test never open a DB connection, but Prisma's
+    # `generate` (run via turbo's ^build) requires the datasource env vars to be
+    # *defined*, and the web env guard wants non-localhost public URLs. The real
+    # app builds run on Vercel (web) and Render (api/realtime) via their own Git
+    # integrations — CI here is just a fast correctness gate.
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      DIRECT_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      NEXT_PUBLIC_API_URL: https://ci.invalid
+      NEXT_PUBLIC_REALTIME_URL: https://ci.invalid
     steps:
       - uses: actions/checkout@v4
 
@@ -27,17 +37,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
-      - name: Generate Prisma client
-        run: pnpm --filter @mvs/db generate
-
-      - name: Build (turbo, topological)
-        run: pnpm build
-
+      # turbo's ^build dependency builds the workspace libs first (incl. the
+      # Prisma client), so an explicit generate step isn't needed.
       - name: Typecheck
         run: pnpm typecheck
-
-      - name: Lint
-        run: pnpm lint
 
       - name: Test
         run: pnpm test

@@ -1,13 +1,12 @@
 name: Deploy
 
+# MANUAL-ONLY. Production deploys are handled natively: web on Vercel and
+# api/realtime on Render, each via its own GitHub integration (push to main
+# auto-deploys there). This workflow is the OPTIONAL self-host / K8s path —
+# build + push container images and run DB migrations — so it runs only when
+# triggered by hand, not on every push.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
-
-# Builds + pushes container images for api/realtime/web and runs DB migrations.
-# Web is also deployable to Vercel via its own Git integration; this workflow
-# covers the self-host / K8s path.
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ${{ github.repository_owner }}/mvs
