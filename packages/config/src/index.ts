@@ -29,7 +29,7 @@ export const DEFAULT_PALETTE: BrandingPalette = BrandingPaletteSchema.parse({});
  * refreshes stale ones at login (the scene editor will replace this with
  * explicit versioning).
  */
-export const SCENE_REV = 6;
+export const SCENE_REV = 7;
 
 /** Per-space-type default scene config. All validated at module load. */
 export const SCENE_PRESETS: Record<SpaceType, SceneConfig> = {
@@ -277,7 +277,7 @@ const AUDITORIUM_OBJECTS: DefaultSceneObject[] = [
   // whole audience reads it. Uniform scale keeps the 16:9 share undistorted.
   obj({
     type: ObjectType.SCREEN,
-    transform: t([0, 0, -30.5], 0, [2.7, 2.7, 1]),
+    transform: t([0, 0, -30.8], 0, [3, 3, 3]),
     config: { type: ObjectType.SCREEN, source: 'screenshare', label: 'Presentation' },
     interaction: { onClick: 'open', permissionsRequired: [] },
   }),

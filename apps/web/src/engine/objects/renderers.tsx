@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState, type ComponentType } from 'react';
 import { Billboard, Text, useTexture } from '@react-three/drei';
-import { CanvasTexture, SRGBColorSpace, VideoTexture } from 'three';
+import { CanvasTexture, DoubleSide, PlaneGeometry, SRGBColorSpace, VideoTexture } from 'three';
 import type { Track } from 'livekit-client';
 import { ObjectType, type SceneObjectDTO } from '@mvs/shared';
 import { statusBreakdown, useBoardData } from '@/monday/useBoardData';
@@ -93,6 +93,26 @@ function SlideMaterial({ url }: { url: string }) {
   return <meshBasicMaterial key={url} map={tex} toneMapped={false} />;
 }
 
+// A concave (cinema-style) screen: a subdivided plane bent forward at the edges
+// so it wraps toward the audience. Standard plane UVs are preserved, so the
+// video/slide texture maps without mirroring; the unlit material ignores the
+// tweaked normals. Curvature is proportional to width, so it scales uniformly.
+const SCREEN_CURVE = 0.34; // forward bulge of the edges, in base units
+function bentScreen(w: number, h: number, depth: number): PlaneGeometry {
+  const geo = new PlaneGeometry(w, h, 48, 1);
+  const pos = geo.attributes.position;
+  const half = w / 2;
+  for (let i = 0; i < pos.count; i++) {
+    const tx = pos.getX(i) / half; // -1 (left) .. 1 (right)
+    pos.setZ(i, depth * tx * tx); // edges come toward the viewer
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  return geo;
+}
+const SCREEN_BACK_GEO = bentScreen(4.2, 2.4, SCREEN_CURVE);
+const SCREEN_VIDEO_GEO = bentScreen(3.9, 2.1, SCREEN_CURVE);
+
 /**
  * Wall screen on a stand. When someone presents (screen share in the
  * space-wide room — or in a table sub-room for huddle screens), the live
@@ -117,20 +137,19 @@ function ScreenRenderer({ object }: ObjectRendererProps) {
 
   return (
     <group>
-      <mesh castShadow position={[0, 2.1, 0]}>
-        <boxGeometry args={[4.2, 2.4, 0.14]} />
-        <meshStandardMaterial color="#2d3436" />
+      {/* Concave bezel + video surface (cinema-style wrap toward the audience). */}
+      <mesh castShadow position={[0, 2.1, 0]} geometry={SCREEN_BACK_GEO}>
+        <meshStandardMaterial color="#22282d" metalness={0.25} roughness={0.6} side={DoubleSide} />
       </mesh>
-      <mesh position={[0, 2.1, 0.08]}>
-        <planeGeometry args={[3.9, 2.1]} />
+      <mesh position={[0, 2.1, 0.06]} geometry={SCREEN_VIDEO_GEO}>
         {texture ? (
-          <meshBasicMaterial key="live" map={texture} toneMapped={false} />
+          <meshBasicMaterial key="live" map={texture} toneMapped={false} side={DoubleSide} />
         ) : slideUrl ? (
-          <Suspense fallback={<meshStandardMaterial key="slideload" color="#0b0d12" />}>
+          <Suspense fallback={<meshStandardMaterial key="slideload" color="#0b0d12" side={DoubleSide} />}>
             <SlideMaterial url={slideUrl} />
           </Suspense>
         ) : (
-          <meshStandardMaterial key="off" color="#0b0d12" emissive="#1e272e" emissiveIntensity={0.6} />
+          <meshStandardMaterial key="off" color="#0b0d12" emissive="#1e272e" emissiveIntensity={0.6} side={DoubleSide} />
         )}
       </mesh>
       {slideUrl && (
