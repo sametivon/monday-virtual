@@ -29,10 +29,11 @@ jobs:
         with:
           version: 10
 
+      # No `cache: pnpm` here — setup-node's pnpm-store detection fails in CI
+      # (it's the step that was dying). Caching is a speed-only optimization.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
