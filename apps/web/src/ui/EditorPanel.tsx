@@ -40,6 +40,7 @@ export function EditorPanel({
   const pendingMove = useEditorStore((s) => s.pendingMove);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [liveScale, setLiveScale] = useState<number | null>(null);
 
   const canEdit = me?.permissions.includes(Permission.SPACE_EDIT) ?? false;
   const selected = manifest.objects.find((o) => o.id === selectedId) ?? null;
@@ -106,6 +107,14 @@ export function EditorPanel({
     saveTransform(selected.id, { position: t.position, rotation, scale: [s, s, s] });
   };
 
+  // Live preview while dragging the scale slider — local only (no network),
+  // so the object resizes in real time; the network save happens on release.
+  const previewScale = (s: number) => {
+    if (!selected) return;
+    const t = selected.transform;
+    onPatchTransform(selected.id, { position: t.position, rotation: t.rotation, scale: [s, s, s] });
+  };
+
   return (
     <div className="absolute right-4 top-16 w-64 rounded-xl border border-brand-primary/40 bg-black/70 p-3 text-sm backdrop-blur">
       <div className="mb-2 flex items-center justify-between">
@@ -139,16 +148,25 @@ export function EditorPanel({
           />
 
           <label className="mb-1 block text-xs text-white/60">
-            Scale <span className="text-white/40">(up to 10× — screens/stages can go big)</span>
+            Scale · <span className="text-white">{(liveScale ?? selected.transform.scale[0]).toFixed(1)}×</span>
           </label>
           <input
             key={`scale-${selected.id}`}
             type="range"
             min={0.3}
-            max={10}
+            max={20}
             step={0.1}
             defaultValue={selected.transform.scale[0]}
-            onPointerUp={(e) => updateTransform({ scale: Number(e.currentTarget.value) })}
+            // Live resize while dragging; persist on release.
+            onChange={(e) => {
+              const s = Number(e.currentTarget.value);
+              setLiveScale(s);
+              previewScale(s);
+            }}
+            onPointerUp={(e) => {
+              setLiveScale(null);
+              updateTransform({ scale: Number(e.currentTarget.value) });
+            }}
             className="mb-3 w-full"
           />
 

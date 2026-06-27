@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { Text } from '@react-three/drei';
 import { AvatarAnimation, type SceneObjectDTO } from '@mvs/shared';
 import { useEditorStore } from '@/stores/editorStore';
@@ -11,8 +12,12 @@ import { OBJECT_RENDERERS, type ObjectRendererProps } from './objects/renderers'
  * ./objects/renderers) and owns the shared interaction plumbing: hover cursor,
  * click routing, and the engine-local `sit` action. Unknown types fall back to
  * a labeled box so bad data degrades visibly instead of invisibly.
+ *
+ * Memoized: an optimistic editor edit changes only the moved/scaled object's
+ * reference, so only that one re-renders — live dragging stays smooth even with
+ * 100+ objects (onInteract is a stable useCallback from the page).
  */
-export function SceneObjectMesh({
+export const SceneObjectMesh = memo(function SceneObjectMesh({
   object,
   onInteract,
 }: {
@@ -52,7 +57,7 @@ export function SceneObjectMesh({
       {editing && <SelectionGizmo selected={selected} />}
     </group>
   );
-}
+});
 
 /** A wireframe footprint + ring shown around editable objects (highlighted when selected). */
 function SelectionGizmo({ selected }: { selected: boolean }) {
