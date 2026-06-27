@@ -1,6 +1,7 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import type Redis from 'ioredis';
 import { PLATFORM } from '@mvs/shared';
+import { SCENE_REV } from '@mvs/config';
 import { Public } from '../../common/auth/public.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { REDIS } from '../../common/redis/redis.module';
@@ -32,6 +33,7 @@ export class HealthController {
       service: 'api',
       platform: PLATFORM.name,
       version: PLATFORM.version,
+      sceneRev: SCENE_REV,
       db,
       redis,
       ts: new Date().toISOString(),
