@@ -35,9 +35,11 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
   // Resolution scales down when the GPU can't hold framerate (M6).
   const [dpr, setDpr] = useState(1.5);
 
-  // Drop the avatar at the spawn point whenever the world changes.
+  // Drop the avatar at the spawn point when ENTERING a space — keyed on spaceId,
+  // not the whole scene object, so an in-editor manifest refresh (moving/scaling
+  // an object) doesn't teleport the player back to spawn.
   useEffect(() => {
-    const spawn = scene.spawnPoints[0];
+    const spawn = manifest.scene.spawnPoints[0];
     if (spawn) {
       usePlayerStore.getState().set({
         position: [spawn.position[0], spawn.position[1], spawn.position[2]],
@@ -45,7 +47,8 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
         target: null,
       });
     }
-  }, [scene]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manifest.spaceId]);
 
   const interior = scene.environment.interior;
   return (

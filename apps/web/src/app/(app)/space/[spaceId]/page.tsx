@@ -42,6 +42,20 @@ export default function SpacePage({ params }: { params: Promise<{ spaceId: strin
       .catch((e) => setError((e as Error).message));
   }, [spaceId]);
 
+  // Optimistic single-object transform update for the scene editor: patch local
+  // state instantly (no network round-trip / full refetch) so dragging feels
+  // immediate; the editor persists in the background.
+  const patchObjectTransform = useCallback(
+    (objectId: string, transform: SceneObjectDTO['transform']) => {
+      setManifest((m) =>
+        m
+          ? { ...m, objects: m.objects.map((o) => (o.id === objectId ? { ...o, transform } : o)) }
+          : m,
+      );
+    },
+    [],
+  );
+
   useEffect(() => {
     if (status !== 'ready') return;
     loadManifest();
@@ -99,7 +113,7 @@ export default function SpacePage({ params }: { params: Promise<{ spaceId: strin
       </EngineErrorBoundary>
       <Hud name={manifest.name} />
       <PresenceList />
-      <EditorPanel manifest={manifest} onChanged={loadManifest} />
+      <EditorPanel manifest={manifest} onChanged={loadManifest} onPatchTransform={patchObjectTransform} />
       <SpaceDock manifest={manifest} onDeckChanged={loadManifest} />
       <VideoTiles />
       <ChatPanel spaceId={spaceId} />

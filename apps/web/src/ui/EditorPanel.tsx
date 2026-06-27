@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ObjectType, Permission, type WorldManifest } from '@mvs/shared';
+import { ObjectType, Permission, type SceneObjectDTO, type WorldManifest } from '@mvs/shared';
 import { api } from '@/lib/api';
 import { useEditorStore } from '@/stores/editorStore';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -22,10 +22,18 @@ const PALETTE: { type: ObjectType; label: string }[] = [
 /**
  * Drag-and-drop scene editor (space:edit). Toggle edit mode, then: click an
  * object to select it, click the floor to move it, tweak rotation/scale, delete
- * it, or drop a new object from the palette. Persists via the object CRUD
- * endpoints; the page reloads the manifest after each change.
+ * it, or drop a new object from the palette. Transform edits apply optimistically
+ * and persist in the background; add/delete refetch the manifest.
  */
-export function EditorPanel({ manifest, onChanged }: { manifest: WorldManifest; onChanged: () => void }) {
+export function EditorPanel({
+  manifest,
+  onChanged,
+  onPatchTransform,
+}: {
+  manifest: WorldManifest;
+  onChanged: () => void;
+  onPatchTransform: (objectId: string, transform: SceneObjectDTO['transform']) => void;
+}) {
   const me = useSessionStore((s) => s.me);
   const editing = useEditorStore((s) => s.editing);
   const selectedId = useEditorStore((s) => s.selectedId);
@@ -36,6 +44,7 @@ export function EditorPanel({ manifest, onChanged }: { manifest: WorldManifest; 
   const canEdit = me?.permissions.includes(Permission.SPACE_EDIT) ?? false;
   const selected = manifest.objects.find((o) => o.id === selectedId) ?? null;
 
+  // Add / delete change the object SET, so they refetch the manifest.
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
     setError(null);
@@ -49,18 +58,29 @@ export function EditorPanel({ manifest, onChanged }: { manifest: WorldManifest; 
     }
   };
 
-  // Consume a floor-click move request: persist the new position, keep y/rotation.
+  // Transform edits (move/scale/rotate): update locally for an instant response,
+  // then persist in the background — no await, no full-scene refetch, no avatar
+  // teleport.
+  const saveTransform = (objectId: string, transform: SceneObjectDTO['transform']) => {
+    onPatchTransform(objectId, transform);
+    setError(null);
+    void api
+      .updateObject(manifest.spaceId, objectId, { transform })
+      .catch((e) => setError((e as Error).message));
+  };
+
+  // Consume a floor-click move request: reposition the selected object, keep y/rotation/scale.
   useEffect(() => {
     if (!pendingMove || !editing) return;
     const obj = manifest.objects.find((o) => o.id === pendingMove.objectId);
     useEditorStore.getState().clearPendingMove();
     if (!obj) return;
     const t = obj.transform;
-    void run(() =>
-      api.updateObject(manifest.spaceId, obj.id, {
-        transform: { position: [pendingMove.x, t.position[1], pendingMove.z], rotation: t.rotation, scale: t.scale },
-      }),
-    );
+    saveTransform(obj.id, {
+      position: [pendingMove.x, t.position[1], pendingMove.z],
+      rotation: t.rotation,
+      scale: t.scale,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingMove?.ts]);
 
@@ -83,11 +103,7 @@ export function EditorPanel({ manifest, onChanged }: { manifest: WorldManifest; 
     const rotation: [number, number, number] =
       patch.rotationY !== undefined ? [t.rotation[0], patch.rotationY, t.rotation[2]] : t.rotation;
     const s = patch.scale ?? t.scale[0];
-    void run(() =>
-      api.updateObject(manifest.spaceId, selected.id, {
-        transform: { position: t.position, rotation, scale: [s, s, s] },
-      }),
-    );
+    saveTransform(selected.id, { position: t.position, rotation, scale: [s, s, s] });
   };
 
   return (
@@ -122,13 +138,15 @@ export function EditorPanel({ manifest, onChanged }: { manifest: WorldManifest; 
             className="mb-2 w-full"
           />
 
-          <label className="mb-1 block text-xs text-white/60">Scale</label>
+          <label className="mb-1 block text-xs text-white/60">
+            Scale <span className="text-white/40">(up to 10× — screens/stages can go big)</span>
+          </label>
           <input
             key={`scale-${selected.id}`}
             type="range"
-            min={0.4}
-            max={2.5}
-            step={0.05}
+            min={0.3}
+            max={10}
+            step={0.1}
             defaultValue={selected.transform.scale[0]}
             onPointerUp={(e) => updateTransform({ scale: Number(e.currentTarget.value) })}
             className="mb-3 w-full"
