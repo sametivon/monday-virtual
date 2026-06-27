@@ -116,7 +116,7 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
         makeDefault
         enablePan={false}
         minDistance={3}
-        maxDistance={55}
+        maxDistance={70}
         maxPolarAngle={Math.PI / 2.1}
       />
     </Canvas>
