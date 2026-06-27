@@ -137,11 +137,13 @@ function ScreenRenderer({ object }: ObjectRendererProps) {
 
   return (
     <group>
-      {/* Concave bezel + video surface (cinema-style wrap toward the audience). */}
-      <mesh castShadow position={[0, 2.1, 0]} geometry={SCREEN_BACK_GEO}>
+      {/* Concave bezel + video surface (cinema-style wrap toward the audience).
+          Anchored low (bottom ≈ floor) so it scales UP, not up-and-away — a big
+          screen stays viewable instead of climbing out of the camera frame. */}
+      <mesh castShadow position={[0, 1.5, 0]} geometry={SCREEN_BACK_GEO}>
         <meshStandardMaterial color="#22282d" metalness={0.25} roughness={0.6} side={DoubleSide} />
       </mesh>
-      <mesh position={[0, 2.1, 0.06]} geometry={SCREEN_VIDEO_GEO}>
+      <mesh position={[0, 1.5, 0.06]} geometry={SCREEN_VIDEO_GEO}>
         {texture ? (
           <meshBasicMaterial key="live" map={texture} toneMapped={false} side={DoubleSide} />
         ) : slideUrl ? (
@@ -153,13 +155,13 @@ function ScreenRenderer({ object }: ObjectRendererProps) {
         )}
       </mesh>
       {slideUrl && (
-        <Text position={[0, 0.82, 0.1]} fontSize={0.13} color="#b2bec3" anchorX="center" anchorY="middle">
+        <Text position={[0, 0.22, 0.1]} fontSize={0.13} color="#b2bec3" anchorX="center" anchorY="middle">
           {`Slide ${slideIndex + 1} / ${slides.length}`}
         </Text>
       )}
       {texture && live && (
         <Text
-          position={[0, 0.82, 0.1]}
+          position={[0, 0.22, 0.1]}
           fontSize={0.16}
           color="#ff6b6b"
           anchorX="center"
@@ -170,18 +172,12 @@ function ScreenRenderer({ object }: ObjectRendererProps) {
           {`● LIVE · ${live.local ? 'You' : live.participantName}`}
         </Text>
       )}
-      {/* Accent light bar under the screen (venue LED-wall look). */}
-      <mesh position={[0, 0.86, 0.06]}>
+      {/* Accent light bar along the screen base (venue LED-wall look). */}
+      <mesh position={[0, 0.26, 0.06]}>
         <boxGeometry args={[4.0, 0.05, 0.04]} />
         <meshStandardMaterial color="#d9a441" emissive="#d9a441" emissiveIntensity={0.9} />
       </mesh>
-      {[-1.6, 1.6].map((x) => (
-        <mesh key={x} castShadow position={[x, 0.85, 0]}>
-          <cylinderGeometry args={[0.05, 0.07, 1.7, 8]} />
-          <meshStandardMaterial color="#636e72" />
-        </mesh>
-      ))}
-      <ObjectLabel text={label(object)} y={3.6} />
+      <ObjectLabel text={label(object)} y={2.9} />
     </group>
   );
 }
