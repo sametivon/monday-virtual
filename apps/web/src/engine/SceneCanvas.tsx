@@ -15,6 +15,7 @@ import type { WorldManifest } from '@mvs/shared';
 import { useSessionStore } from '@/stores/sessionStore';
 import { usePlayerStore } from '@/stores/playerStore';
 import { usePresenceStore } from '@/stores/presenceStore';
+import { Amphitheater } from './Amphitheater';
 import { Avatar } from './Avatar';
 import { CameraRig } from './CameraRig';
 import { onFloorClick } from './floorClick';
@@ -101,6 +102,13 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
               position={[0, 0.01, 0]}
             />
           </>
+        )}
+        {scene.amphitheater && (
+          <Amphitheater
+            bowl={scene.amphitheater}
+            carpetColor={interior?.floorColor}
+            accentColor={interior?.accentColor}
+          />
         )}
         {scene.stage && <StagePlatform stage={scene.stage} accent={scene.environment.interior?.accentColor} />}
 

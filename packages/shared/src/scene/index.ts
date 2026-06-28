@@ -121,6 +121,36 @@ export function inStageZone(stage: StageZone, x: number, z: number): boolean {
   );
 }
 
+/**
+ * A raked amphitheater bowl: a low flat area around a front stage, then
+ * concentric terraced rows that step UP as they fan away from it — so every
+ * seat looks down onto the stage/screens (the geometry guarantees sightlines).
+ * The engine renders the terraces; the avatar's floor height follows them.
+ */
+export const AmphitheaterSchema = z.object({
+  /** Bowl focus on the XZ plane (≈ stage front center). Rows rise outward. */
+  center: z.tuple([z.number(), z.number()]),
+  /** Flat radius around the center (stage + front aisle), all at y=0. */
+  innerRadius: z.number().positive().default(11),
+  /** Radial depth of each terrace row. */
+  rowDepth: z.number().positive().default(2.7),
+  /** Height each successive row steps up. */
+  riser: z.number().positive().default(0.6),
+  /** Number of terraced rows. */
+  rows: z.number().int().positive().default(11),
+  /** Seating fan half-angle in radians (0 = straight back toward +Z from center). */
+  halfArc: z.number().positive().default(1.2),
+});
+export type Amphitheater = z.infer<typeof AmphitheaterSchema>;
+
+/** Floor height at (x,z): flat within innerRadius, then stepped up per terrace row. */
+export function bowlHeight(bowl: Amphitheater, x: number, z: number): number {
+  const d = Math.hypot(x - bowl.center[0], z - bowl.center[1]);
+  if (d <= bowl.innerRadius) return 0;
+  const row = Math.floor((d - bowl.innerRadius) / bowl.rowDepth);
+  return (Math.min(row, bowl.rows - 1) + 1) * bowl.riser;
+}
+
 export const SceneConfigSchema = z.object({
   version: z.literal(1).default(1),
   environment: SceneEnvironmentSchema.default({}),
@@ -131,6 +161,8 @@ export const SceneConfigSchema = z.object({
   ]),
   spatialAudio: SpatialAudioConfigSchema.default({}),
   stage: StageZoneSchema.optional(),
+  /** Raked seating bowl (auditorium). When present the engine renders terraces. */
+  amphitheater: AmphitheaterSchema.optional(),
 });
 export type SceneConfig = z.infer<typeof SceneConfigSchema>;
 

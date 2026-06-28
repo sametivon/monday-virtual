@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { AvatarAnimation, inStageZone, type SceneConfig } from '@mvs/shared';
+import { AvatarAnimation, bowlHeight, inStageZone, type SceneConfig } from '@mvs/shared';
 import { usePlayerStore } from '@/stores/playerStore';
 
 const KEYS: Record<string, [number, number]> = {
@@ -112,11 +112,14 @@ export function useLocalMovement(scene: SceneConfig) {
     const [x, , z] = store.position;
     const nx = clamp(x + vx * step, scene.bounds.min[0], scene.bounds.max[0]);
     const nz = clamp(z + vz * step, scene.bounds.min[2], scene.bounds.max[2]);
-    // Step up onto the stage platform when inside its footprint.
+    // Floor height: the stage platform inside its footprint, otherwise the
+    // raked amphitheater terraces (so you walk up/down the steps), else ground.
     const ny =
       scene.stage && inStageZone(scene.stage, nx, nz)
         ? scene.stage.center[1] + scene.stage.height
-        : 0;
+        : scene.amphitheater
+          ? bowlHeight(scene.amphitheater, nx, nz)
+          : 0;
 
     store.set({
       position: [nx, ny, nz],
