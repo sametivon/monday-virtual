@@ -54,7 +54,8 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
   return (
     <Canvas
       shadows
-      camera={{ position: [0, 8, 14], fov: 50 }}
+      // Wider lens + a higher/further start so a big hall reads as big on entry.
+      camera={{ position: [0, 12, 22], fov: 62 }}
       dpr={dpr}
       gl={{ antialias: true, toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.15 }}
     >
@@ -116,8 +117,12 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
         makeDefault
         enablePan={false}
         minDistance={3}
-        maxDistance={70}
-        maxPolarAngle={Math.PI / 2.1}
+        maxDistance={95}
+        // Allow tilting past horizontal so you can look UP and take in the
+        // ceiling height; faster wheel zoom so scrolling out actually reaches
+        // the back of a big hall.
+        maxPolarAngle={Math.PI * 0.6}
+        zoomSpeed={1.6}
       />
     </Canvas>
   );
