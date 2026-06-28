@@ -29,7 +29,7 @@ export const DEFAULT_PALETTE: BrandingPalette = BrandingPaletteSchema.parse({});
  * refreshes stale ones at login (the scene editor will replace this with
  * explicit versioning).
  */
-export const SCENE_REV = 12;
+export const SCENE_REV = 13;
 
 /** Per-space-type default scene config. All validated at module load. */
 export const SCENE_PRESETS: Record<SpaceType, SceneConfig> = {
@@ -68,13 +68,14 @@ export const SCENE_PRESETS: Record<SpaceType, SceneConfig> = {
         panelColor: '#4a2c33',
         ceilingColor: '#262019',
         lightColor: '#ffe2b8',
-        wallHeight: 32,
+        wallHeight: 42,
       },
     },
-    lighting: { ambientIntensity: 0.95, ambientColor: '#f3ecff', directionalIntensity: 1.3 },
+    lighting: { ambientIntensity: 1.0, ambientColor: '#f3ecff', directionalIntensity: 1.3 },
     // Tall + deep (grand) but not ultra-wide, so the ~46m screen fills ~70% of
-    // the front wall and actually dominates instead of looking small.
-    bounds: { min: [-32, 0, -50], max: [32, 34, 30] },
+    // the front wall and dominates; a 42m ceiling gives the soaring conference-
+    // hall feel with real space above the screen.
+    bounds: { min: [-32, 0, -50], max: [32, 48, 30] },
     spawnPoints: [{ id: 'back', position: [0, 0, 18], rotation: Math.PI }],
     // Auditorium uses near-uniform audience audio; widen falloff.
     spatialAudio: { minDistance: 4, maxDistance: 80, rolloff: 'linear' },
