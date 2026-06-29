@@ -11,10 +11,12 @@ import { usePresenceStore } from '@/stores/presenceStore';
 import { useSpaceSocket } from '@/realtime/useSpaceSocket';
 import { EngineErrorBoundary } from '@/engine/EngineErrorBoundary';
 import { media } from '@/media/mediaController';
+import { useScreenShareTile } from '@/media/useScreenShare';
 import { ChatPanel } from '@/ui/ChatPanel';
 import { DashboardModal } from '@/ui/DashboardModal';
 import { EditorPanel } from '@/ui/EditorPanel';
 import { PresenceList } from '@/ui/PresenceList';
+import { ScreenViewer } from '@/ui/ScreenViewer';
 import { SpaceDock } from '@/ui/SpaceDock';
 import { VideoTiles } from '@/ui/VideoTiles';
 import { WhiteboardModal } from '@/ui/WhiteboardModal';
@@ -74,6 +76,13 @@ export default function SpacePage({ params }: { params: Promise<{ spaceId: strin
 
   const [dashboard, setDashboard] = useState<SceneObjectDTO | null>(null);
   const [whiteboard, setWhiteboard] = useState<SceneObjectDTO | null>(null);
+  const [screen, setScreen] = useState<SceneObjectDTO | null>(null);
+
+  // When someone is screen-sharing, surface a one-tap way to view it fullscreen
+  // (clicking the tiny 3D screen from a back row is fiddly). Opens the main
+  // stage SCREEN object so the slide fallback still works.
+  const liveShare = useScreenShareTile();
+  const mainScreen = manifest?.objects.find((o) => o.type === ObjectType.SCREEN) ?? null;
 
   // Object interactions: tables join their sub-room (M4); dashboards open
   // live monday board data; portals teleport; whiteboards open the drawing
@@ -86,6 +95,7 @@ export default function SpacePage({ params }: { params: Promise<{ spaceId: strin
         const config = object.config as { roomKey: string; label?: string };
         void media.joinTable(config.roomKey, config.label ?? 'Meeting');
       }
+      if (object.type === ObjectType.SCREEN) setScreen(object);
       if (object.type === ObjectType.DASHBOARD) setDashboard(object);
       if (object.type === ObjectType.WHITEBOARD) setWhiteboard(object);
       if (object.type === ObjectType.PORTAL) {
@@ -112,6 +122,16 @@ export default function SpacePage({ params }: { params: Promise<{ spaceId: strin
         <SceneCanvas manifest={manifest} onInteract={onInteract} />
       </EngineErrorBoundary>
       <Hud name={manifest.name} />
+      {liveShare && !screen && mainScreen && (
+        <button
+          onClick={() => setScreen(mainScreen)}
+          className="absolute left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-lg ring-2 ring-white/20 transition hover:brightness-110"
+        >
+          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-400" />
+          {liveShare.local ? 'You’re presenting' : `${liveShare.participantName} is presenting`} · View
+          fullscreen
+        </button>
+      )}
       <PresenceList />
       <EditorPanel manifest={manifest} onChanged={loadManifest} onPatchTransform={patchObjectTransform} />
       <SpaceDock manifest={manifest} onDeckChanged={loadManifest} />
@@ -126,6 +146,7 @@ export default function SpacePage({ params }: { params: Promise<{ spaceId: strin
         />
       )}
       {whiteboard && <WhiteboardModal object={whiteboard} onClose={() => setWhiteboard(null)} />}
+      {screen && <ScreenViewer object={screen} onClose={() => setScreen(null)} />}
     </div>
   );
 }
