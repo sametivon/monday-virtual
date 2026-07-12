@@ -195,6 +195,82 @@
   .mv-landing .fgrid, .mv-landing .steps, .mv-landing .tiers { grid-template-columns: 1fr; }
   .mv-landing .tier.feat-tier { transform: none; }
 }
+/* ── Accessibility helpers ── */
+.mv-landing .sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.mv-landing .skip-link {
+  position: absolute; left: -9999px; top: 0; z-index: 100;
+  background: var(--ink); color: #fff; padding: .65rem 1rem; border-radius: 0 0 8px 0; text-decoration: none;
+}
+.mv-landing .skip-link:focus { left: 0; }
+
+/* hero trust list is a <ul> */
+.mv-landing .trust { list-style: none; padding: 0; }
+.mv-landing .trust li { display: inline-flex; align-items: center; gap: .45rem; }
+
+/* trust bar */
+.mv-landing .trustbar { border-block: 1px solid var(--line); background: var(--paper-2); }
+.mv-landing .trustbar-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.4rem; }
+.mv-landing .trustbar p { color: var(--muted); font-size: .95rem; }
+.mv-landing .trustbar strong { color: var(--ink); }
+.mv-landing .trustbar ul { display: flex; flex-wrap: wrap; gap: .6rem 1.4rem; list-style: none; margin: 0; padding: 0; font-size: .86rem; color: var(--muted); }
+.mv-landing .trustbar li { position: relative; padding-left: 1.1rem; }
+.mv-landing .trustbar li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+
+/* comparison table */
+.mv-landing .compare { background: var(--paper); }
+.mv-landing .table-scroll { overflow-x: auto; margin-top: 2.4rem; border: 1px solid var(--line); border-radius: 16px; }
+.mv-landing table.cmp { width: 100%; border-collapse: collapse; font-size: .95rem; min-width: 640px; }
+.mv-landing .cmp th, .mv-landing .cmp td { padding: .9rem 1rem; text-align: center; border-bottom: 1px solid var(--line); }
+.mv-landing .cmp thead th { font-family: var(--sans); font-weight: 600; font-size: .88rem; color: var(--muted); background: var(--paper-2); }
+.mv-landing .cmp thead th.own { color: var(--accent-ink); }
+.mv-landing .cmp th[scope="row"] { text-align: left; font-family: var(--sans); font-weight: 500; color: var(--ink); }
+.mv-landing .cmp tbody tr:last-child th, .mv-landing .cmp tbody tr:last-child td { border-bottom: 0; }
+.mv-landing .cmp .mk { font-weight: 700; font-size: 1.05rem; }
+.mv-landing .cmp .yes { color: var(--accent); }
+.mv-landing .cmp .part { color: #b0861f; }
+.mv-landing .cmp .no { color: #c3bcae; }
+
+/* use cases */
+.mv-landing .usecases { background: var(--paper-2); border-block: 1px solid var(--line); }
+.mv-landing .uc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; margin-top: 2.6rem; }
+.mv-landing .uc { border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem; background: var(--paper); }
+.mv-landing .uc h3 { font-size: 1.14rem; margin-bottom: .5rem; }
+.mv-landing .uc p { color: var(--muted); font-size: .96rem; }
+
+/* faq (native details/summary — accessible + keyboard, no JS) */
+.mv-landing .faq { background: var(--paper); }
+.mv-landing .faq-list { margin-top: 2.4rem; border-top: 1px solid var(--line); }
+.mv-landing .faq-item { border-bottom: 1px solid var(--line); }
+.mv-landing .faq-item summary { list-style: none; cursor: pointer; padding: 1.15rem 2.4rem 1.15rem 0; position: relative; }
+.mv-landing .faq-item summary::-webkit-details-marker { display: none; }
+.mv-landing .faq-item summary h3 { display: inline; font-family: var(--serif); font-size: 1.16rem; font-weight: 500; }
+.mv-landing .faq-item summary::after { content: "+"; position: absolute; right: .2rem; top: .95rem; font-size: 1.5rem; line-height: 1; color: var(--accent); }
+.mv-landing .faq-item[open] summary::after { content: "\2013"; }
+.mv-landing .faq-item p { color: var(--muted); padding: 0 2.4rem 1.35rem 0; max-width: 72ch; }
+
+/* centered CTA row */
+.mv-landing .cta-center { justify-content: center; margin-top: 2.4rem; }
+
+/* steps is an <ol> */
+.mv-landing .steps { list-style: none; padding-left: 0; }
+
+/* ── Motion: pause the mesh drift off-screen (perf/battery); freeze for reduced motion ── */
+.mv-landing .grad-hero::before, .mv-landing .grad-hero::after,
+.mv-landing .grad-closing::before, .mv-landing .grad-closing::after { animation-play-state: paused; }
+.mv-landing .grad-hero.mv-inview::before, .mv-landing .grad-hero.mv-inview::after,
+.mv-landing .grad-closing.mv-inview::before, .mv-landing .grad-closing.mv-inview::after { animation-play-state: running; }
+
+@media (max-width: 860px) {
+  .mv-landing .uc-grid { grid-template-columns: 1fr; }
+  .mv-landing .trustbar-inner { flex-direction: column; align-items: flex-start; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mv-landing .btn, .mv-landing .btn:hover { transition: none; transform: none; }
+  .mv-landing .grad-hero::before, .mv-landing .grad-hero::after,
+  .mv-landing .grad-closing::before, .mv-landing .grad-closing::after,
+  .mv-landing .grad-stage::before, .mv-landing .grad-stage::after { animation: none; }
 }
