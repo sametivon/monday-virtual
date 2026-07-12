@@ -10,7 +10,68 @@ import { GradientCanvas } from './GradientCanvas';
 // Monday install/trial entry — placeholder; wire to the Marketplace listing.
 const APP_TRIAL_URL = 'https://auth.monday.com/oauth2/authorize';
 const SOFT: [number, number, number, number] = [0xc9c2f0, 0xf6c7b8, 0xbbdcef, 0xc6e9d7];
-const STAGE: [number, number, number, number] = [0x2a2340, 0x3a2e52, 0x6c5ce7, 0x1b1626];
+
+/** Stylized cross-section of the amphitheater: a lit stage screen + a presenter
+ *  + tiered curved rows of seats — a recognizable picture of the product. */
+function AuditoriumArt() {
+  const cx = 300;
+  const rows = [
+    { y: 250, rx: 205, ry: 40, n: 13, w: 15, h: 12, o: 0.95 },
+    { y: 296, rx: 248, ry: 46, n: 15, w: 17, h: 13, o: 0.86 },
+    { y: 348, rx: 292, ry: 52, n: 17, w: 19, h: 15, o: 0.76 },
+    { y: 406, rx: 338, ry: 58, n: 19, w: 21, h: 16, o: 0.66 },
+  ];
+  const seats: React.ReactNode[] = [];
+  rows.forEach((row, r) => {
+    for (let i = 0; i < row.n; i++) {
+      const a = -1.15 + (2.3 * i) / (row.n - 1);
+      const x = cx + Math.sin(a) * row.rx;
+      const y = row.y + (1 - Math.cos(a)) * row.ry;
+      seats.push(
+        <rect
+          key={`${r}-${i}`}
+          x={x - row.w / 2}
+          y={y - row.h / 2}
+          width={row.w}
+          height={row.h}
+          rx={row.w * 0.28}
+          fill="#7a2f42"
+          opacity={row.o}
+        />,
+      );
+    }
+  });
+  return (
+    <svg
+      viewBox="0 0 600 460"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden="true"
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+    >
+      <defs>
+        <radialGradient id="mv-glow" cx="50%" cy="26%" r="72%">
+          <stop offset="0" stopColor="#3a2e6b" />
+          <stop offset="1" stopColor="#16121f" />
+        </radialGradient>
+        <linearGradient id="mv-screen" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#8b7bf0" />
+          <stop offset="1" stopColor="#5a49c8" />
+        </linearGradient>
+      </defs>
+      <rect width="600" height="460" fill="url(#mv-glow)" />
+      <rect x="182" y="32" width="236" height="128" rx="12" fill="url(#mv-screen)" />
+      <rect x="182" y="32" width="236" height="128" rx="12" fill="none" stroke="#b7acf2" strokeOpacity="0.45" />
+      <rect x="206" y="150" width="46" height="7" rx="3.5" fill="#c9a23f" opacity="0.85" />
+      <ellipse cx="300" cy="206" rx="128" ry="24" fill="#221b31" />
+      <rect x="188" y="198" width="224" height="10" rx="5" fill="#c9a23f" opacity="0.45" />
+      <g transform="translate(300 190)">
+        <rect x="-7" y="-6" width="14" height="20" rx="6" fill="#b7acf2" />
+        <circle cx="0" cy="-12" r="7" fill="#dcd6f6" />
+      </g>
+      {seats}
+    </svg>
+  );
+}
 
 function Tick() {
   return (
@@ -131,7 +192,7 @@ export default function LandingPage() {
 
           <div className="stage-card">
             <div className="stage-visual">
-              <GradientCanvas className="grad-stage" palette={STAGE} base={0x141019} />
+              <AuditoriumArt />
               <span className="stage-tag">&#9679; Live on stage &mdash; proximity audio, seat &amp; present</span>
             </div>
             <div className="stage-copy">

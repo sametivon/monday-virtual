@@ -40,6 +40,13 @@ export function MondayProvider({ children }: { children: React.ReactNode }) {
             : null;
         const sessionToken = fromUrl ?? (await getMondaySessionToken());
         if (!sessionToken) {
+          // A public visitor opened the app URL directly (not embedded in the
+          // monday iframe and no pop-out handoff) — send them to the website
+          // instead of showing the "open from monday" error.
+          if (!inMondayIframe()) {
+            window.location.replace('/home');
+            return;
+          }
           throw new Error('No monday sessionToken (open this app from monday.com)');
         }
 
