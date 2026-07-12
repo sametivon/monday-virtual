@@ -17,9 +17,13 @@ import { useHexCarpetTexture, useTiledPbr } from './materials';
 export function Room({
   bounds,
   interior,
+  venue = false,
 }: {
   bounds: SceneConfig['bounds'];
   interior: InteriorConfig;
+  /** Stage spaces (auditorium/training) get the venue treatment: wood-plank
+   *  walls, vertical LED light rods flanking the stage, coffered ceiling. */
+  venue?: boolean;
 }) {
   const width = bounds.max[0] - bounds.min[0];
   const depth = bounds.max[2] - bounds.min[2];
@@ -30,8 +34,9 @@ export function Room({
   return (
     <group position={[cx, 0, cz]}>
       <Floor width={width} depth={depth} interior={interior} />
-      <Walls width={width} depth={depth} interior={interior} />
-      <Ceiling width={width} depth={depth} interior={interior} />
+      <Walls width={width} depth={depth} interior={interior} venue={venue} />
+      <Ceiling width={width} depth={depth} interior={interior} venue={venue} />
+      {venue && <LightRods width={width} depth={depth} H={H} />}
       {interior.plants &&
         [
           [-width / 2 + 1.4, -depth / 2 + 1.4],
@@ -86,9 +91,23 @@ function Floor({ width, depth, interior }: { width: number; depth: number; inter
   );
 }
 
-function Walls({ width, depth, interior }: { width: number; depth: number; interior: InteriorConfig }) {
+function Walls({
+  width,
+  depth,
+  interior,
+  venue = false,
+}: {
+  width: number;
+  depth: number;
+  interior: InteriorConfig;
+  venue?: boolean;
+}) {
   const H = interior.wallHeight;
   const fabric = useTiledPbr('fabric', 6, 2);
+  // Venue walls read as warm wood planking (eXp-style) instead of fabric.
+  const woodWall = useTiledPbr('wood', Math.max(width, depth) / 3.2, H / 3.2);
+  const wallTex = venue ? woodWall : fabric;
+  const wallTint = venue ? lighten(interior.wallColor, 0.1) : interior.wallColor;
   const walls: { pos: [number, number, number]; rot: number; len: number; panels: boolean }[] = [
     { pos: [0, H / 2, -depth / 2], rot: 0, len: width, panels: true },
     // Rear wall (spawn side): no panels — they crowd the follow camera.
@@ -107,28 +126,29 @@ function Walls({ width, depth, interior }: { width: number; depth: number; inter
           <mesh receiveShadow>
             <planeGeometry args={[w.len, H]} />
             <meshStandardMaterial
-              map={fabric.map}
-              normalMap={fabric.normalMap}
-              roughnessMap={fabric.roughnessMap}
-              color={interior.wallColor}
+              map={wallTex.map}
+              normalMap={wallTex.normalMap}
+              roughnessMap={wallTex.roughnessMap}
+              color={wallTint}
             />
           </mesh>
           {/* Framed wall panels: a back slab + a lighter inset, so each reads
               as mounted acoustic/art paneling rather than a flat dark void. */}
           {w.panels &&
-            panelOffsets(w.len).map((x) => (
-              <group key={x} position={[x, 0.4, 0.06]}>
+            panelOffsets(w.len).map((x, pi) => (
+              // Venue panels tilt alternately for a faceted acoustic-wall look.
+              <group key={x} position={[x, 0.4, 0.06]} rotation={[0, 0, venue ? (pi % 2 ? 0.05 : -0.05) : 0]}>
                 <mesh castShadow>
-                  <boxGeometry args={[2.3, H * 0.66, 0.07]} />
+                  <boxGeometry args={[2.3, H * (venue ? 0.78 : 0.66), 0.07]} />
                   <meshStandardMaterial color={interior.panelColor} roughness={0.92} />
                 </mesh>
                 {/* Inset face, slightly lighter + warmer than the frame. */}
                 <mesh position={[0, 0, 0.045]}>
-                  <planeGeometry args={[1.95, H * 0.66 - 0.35]} />
+                  <planeGeometry args={[1.95, H * (venue ? 0.78 : 0.66) - 0.35]} />
                   <meshStandardMaterial color={lighten(interior.panelColor, 0.16)} roughness={0.85} />
                 </mesh>
                 {/* Thin accent top edge on the frame. */}
-                <mesh position={[0, (H * 0.66) / 2 - 0.05, 0.05]}>
+                <mesh position={[0, (H * (venue ? 0.78 : 0.66)) / 2 - 0.05, 0.05]}>
                   <planeGeometry args={[2.1, 0.04]} />
                   <meshStandardMaterial
                     color={interior.accentColor}
@@ -158,12 +178,13 @@ function Walls({ width, depth, interior }: { width: number; depth: number; inter
   );
 }
 
-/** Lighten a hex color toward white by `amt` (0..1). */
+/** Lighten (positive amt) or darken (negative amt) a hex color, clamped. */
 function lighten(hex: string, amt: number): string {
   const n = parseInt(hex.replace('#', ''), 16);
-  const r = Math.min(255, ((n >> 16) & 0xff) + Math.round(255 * amt));
-  const g = Math.min(255, ((n >> 8) & 0xff) + Math.round(255 * amt));
-  const b = Math.min(255, (n & 0xff) + Math.round(255 * amt));
+  const c = (v: number) => Math.max(0, Math.min(255, v + Math.round(255 * amt)));
+  const r = c((n >> 16) & 0xff);
+  const g = c((n >> 8) & 0xff);
+  const b = c(n & 0xff);
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
@@ -174,8 +195,28 @@ function panelOffsets(length: number): number[] {
   return Array.from({ length: count }, (_, i) => -usable / 2 + (usable * i) / (count - 1));
 }
 
-function Ceiling({ width, depth, interior }: { width: number; depth: number; interior: InteriorConfig }) {
+function Ceiling({
+  width,
+  depth,
+  interior,
+  venue = false,
+}: {
+  width: number;
+  depth: number;
+  interior: InteriorConfig;
+  venue?: boolean;
+}) {
   const H = interior.wallHeight;
+  // Coffered beam grid (venue): dark beams every ~9m in both directions.
+  const beams = useMemo(() => {
+    if (!venue) return { xs: [] as number[], zs: [] as number[] };
+    const nx = Math.max(2, Math.round(width / 9));
+    const nz = Math.max(2, Math.round(depth / 9));
+    return {
+      xs: Array.from({ length: nx - 1 }, (_, i) => -width / 2 + (width * (i + 1)) / nx),
+      zs: Array.from({ length: nz - 1 }, (_, i) => -depth / 2 + (depth * (i + 1)) / nz),
+    };
+  }, [venue, width, depth]);
   const lights = useMemo(() => {
     const cols = Math.max(2, Math.round(width / 9));
     const rows = Math.max(2, Math.round(depth / 9));
@@ -207,6 +248,19 @@ function Ceiling({ width, depth, interior }: { width: number; depth: number; int
         <planeGeometry args={[width, depth]} />
         <meshStandardMaterial color={interior.ceilingColor} roughness={0.95} />
       </mesh>
+      {/* Coffered beams (venue only) — hang just below the ceiling plane. */}
+      {beams.xs.map((x) => (
+        <mesh key={`bx${x}`} position={[x, -0.35, 0]}>
+          <boxGeometry args={[0.4, 0.7, depth]} />
+          <meshStandardMaterial color={lighten(interior.ceilingColor, -0.06)} roughness={0.9} />
+        </mesh>
+      ))}
+      {beams.zs.map((z) => (
+        <mesh key={`bz${z}`} position={[0, -0.35, z]}>
+          <boxGeometry args={[width, 0.7, 0.4]} />
+          <meshStandardMaterial color={lighten(interior.ceilingColor, -0.06)} roughness={0.9} />
+        </mesh>
+      ))}
       {lights.map(([x, z]) => {
         const key = `${x}:${z}`;
         return (
@@ -236,6 +290,44 @@ function Ceiling({ width, depth, interior }: { width: number; depth: number; int
         );
       })}
     </group>
+  );
+}
+
+/**
+ * Vertical LED light rods flanking the stage end of the hall (eXp-style):
+ * clusters of thin, bright emissive sticks at varied heights and slight lean.
+ * Purely emissive — no live lights, so the GPU cost is a few boxes.
+ */
+function LightRods({ width, depth, H }: { width: number; depth: number; H: number }) {
+  // Deterministic layout (no Math.random — keeps renders/screenshots stable).
+  const rods: { x: number; z: number; h: number; lean: number }[] = [];
+  const heights = [0.82, 0.6, 0.72, 0.5, 0.66];
+  const leans = [-0.05, 0.03, -0.02, 0.05, 0.0];
+  for (let side = 0; side < 2; side++) {
+    const sx = side === 0 ? -1 : 1;
+    for (let i = 0; i < 5; i++) {
+      rods.push({
+        x: sx * (width * 0.34 + i * 1.1),
+        z: -depth / 2 + 2.2 + (i % 3) * 1.4,
+        h: H * heights[i]!,
+        lean: sx * leans[i]!,
+      });
+    }
+  }
+  return (
+    <>
+      {rods.map((r, i) => (
+        <mesh key={i} position={[r.x, r.h / 2, r.z]} rotation={[0, 0, r.lean]}>
+          <boxGeometry args={[0.14, r.h, 0.14]} />
+          <meshStandardMaterial
+            color="#ffffff"
+            emissive="#f4f0ff"
+            emissiveIntensity={2.1}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+    </>
   );
 }
 

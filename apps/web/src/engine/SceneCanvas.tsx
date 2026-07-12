@@ -89,7 +89,11 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
       <Suspense fallback={null}>
         {scene.environment.interior ? (
           // Designed interiors replace the infinite-grid void (Phase 2).
-          <Room bounds={scene.bounds} interior={scene.environment.interior} />
+          <Room
+            bounds={scene.bounds}
+            interior={scene.environment.interior}
+            venue={Boolean(scene.stage)}
+          />
         ) : (
           <>
             <Ground color={scene.environment.groundColor} />

@@ -1,12 +1,20 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Permission, UploadKind, ObjectType, type WorldManifest } from '@mvs/shared';
+import {
+  AvatarAnimation,
+  Permission,
+  UploadKind,
+  ObjectType,
+  type SceneObjectDTO,
+  type WorldManifest,
+} from '@mvs/shared';
 import { api } from '@/lib/api';
 import { media, useMediaStore } from '@/media/mediaController';
 import { sendHandRaise, sendReaction, sendSlideGoto } from '@/realtime/useSpaceSocket';
 import { useSessionStore } from '@/stores/sessionStore';
-import { usePresenceStore } from '@/stores/presenceStore';
+import { usePlayerStore } from '@/stores/playerStore';
+import { remoteTransforms, usePresenceStore } from '@/stores/presenceStore';
 import { useSlideStore } from '@/stores/slideStore';
 
 const EMOJIS = ['👏', '❤️', '😂', '🎉', '👍'];
@@ -40,6 +48,7 @@ export function SpaceDock({
         <MediaSegment />
         <Divider />
         <ReactionsSegment />
+        <SeatSegment manifest={manifest} />
         <SlidesSegment manifest={manifest} onDeckChanged={onDeckChanged} />
       </div>
     </>
@@ -152,6 +161,58 @@ function ReactionsSegment() {
           </div>
         )}
       </div>
+    </>
+  );
+}
+
+// ── Seat: one tap into the nearest free seat (eXp-style) ─────────────────────
+function SeatSegment({ manifest }: { manifest: WorldManifest }) {
+  // Reactive only to my animation (sitting?) — chair math runs on click.
+  const sitting = usePlayerStore((s) => s.animation === AvatarAnimation.SIT);
+  const chairs = manifest.objects.filter((o) => o.type === ObjectType.CHAIR);
+  if (chairs.length === 0) return null;
+
+  const seatMe = () => {
+    const store = usePlayerStore.getState();
+    if (sitting) {
+      store.set({ animation: AvatarAnimation.IDLE });
+      return;
+    }
+    const [px, , pz] = store.position;
+    // A seat is taken if any remote player is (headed) within ~0.8m of it.
+    const taken = (c: SceneObjectDTO) => {
+      const [cx, , cz] = c.transform.position;
+      for (const t of remoteTransforms.values()) {
+        if (Math.hypot(t.target.x - cx, t.target.z - cz) < 0.8) return true;
+      }
+      return false;
+    };
+    let best: SceneObjectDTO | null = null;
+    let bestD = Infinity;
+    for (const c of chairs) {
+      if (taken(c)) continue;
+      const d = Math.hypot(c.transform.position[0] - px, c.transform.position[2] - pz);
+      if (d < bestD) {
+        bestD = d;
+        best = c;
+      }
+    }
+    if (!best) return; // everything taken — leave the user where they are
+    const { position } = best.transform;
+    const sitRotation =
+      (best.config as { sitRotation?: number }).sitRotation ?? best.transform.rotation[1];
+    store.set({
+      position: [position[0], position[1], position[2]],
+      rotation: sitRotation,
+      animation: AvatarAnimation.SIT,
+      target: null,
+    });
+  };
+
+  return (
+    <>
+      <Divider />
+      <Toggle on={sitting} onClick={seatMe} label={sitting ? '🪑 Stand' : '🪑 Seat'} />
     </>
   );
 }
