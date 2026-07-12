@@ -2,6 +2,7 @@ import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import jwt from 'jsonwebtoken';
 import { request } from 'undici';
+import type { MondaySubscription } from '@mvs/shared';
 import type { Env } from '../../config/env';
 
 /**
@@ -18,6 +19,12 @@ export interface MondayIdentity {
   mondayAccountId: string;
   email: string;
   name: string;
+  /**
+   * Marketplace subscription claim, present in sessionTokens once the app is
+   * monetized (absent for dev tokens and pre-marketplace installs). Signed by
+   * monday, so trustworthy — unlike anything the client sends us directly.
+   */
+  subscription: MondaySubscription | null;
 }
 
 interface MondaySessionClaims {
@@ -26,10 +33,12 @@ interface MondaySessionClaims {
     account_id?: number | string;
     user_email?: string;
     user_name?: string;
+    subscription?: MondaySubscription;
   };
   // Some token variants put fields at the top level.
   user_id?: number | string;
   account_id?: number | string;
+  subscription?: MondaySubscription;
 }
 
 @Injectable()
@@ -81,6 +90,7 @@ export class MondayAuthService {
       mondayAccountId: String(accountId),
       email: dat.user_email ?? '',
       name: dat.user_name ?? 'Monday User',
+      subscription: dat.subscription ?? claims.subscription ?? null,
     };
   }
 
@@ -153,6 +163,7 @@ export class MondayAuthService {
       mondayAccountId: String(data.me.account.id),
       email: data.me.email,
       name: data.me.name,
+      subscription: null, // OAuth me() carries no subscription; the token claim does
     };
   }
 

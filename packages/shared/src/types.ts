@@ -15,6 +15,7 @@ import {
   UserPresenceStatus,
 } from './enums';
 import { ObjectInteractionSchema, TransformSchema } from './scene/index';
+import type { TenantPlanInfo } from './plans';
 
 // ── Auth ───────────────────────────────────────────────────────────────────
 
@@ -211,6 +212,8 @@ export interface MeResponse {
   user: UserDTO;
   tenant: TenantDTO;
   permissions: string[];
+  /** Subscription plan + gated features (monday Marketplace monetization). */
+  plan: TenantPlanInfo;
 }
 
 // ── GDPR / data protection ──────────────────────────────────────────────────

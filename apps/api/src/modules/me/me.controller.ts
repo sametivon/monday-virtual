@@ -10,11 +10,15 @@ import {
 } from '@mvs/shared';
 import { CurrentUser, type RequestUser } from '../../common/auth/current-user.decorator';
 import { ZodBody } from '../../common/pipes/zod-validation.pipe';
+import { PlanService } from '../../common/plan/plan.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 @Controller('me')
 export class MeController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly plans: PlanService,
+  ) {}
 
   /** Persist the user's avatar customization (model + accent color). */
   @Patch('avatar')
@@ -32,9 +36,10 @@ export class MeController {
   @Get()
   async me(@CurrentUser() principal: RequestUser): Promise<MeResponse> {
     const db = this.prisma.forTenant(principal.tenantId);
-    const [user, tenant] = await Promise.all([
+    const [user, tenant, plan] = await Promise.all([
       db.user.findFirstOrThrow({ where: { id: principal.sub }, include: { role: true } }),
       db.tenant.findFirstOrThrow({ where: { id: principal.tenantId }, include: { branding: true } }),
+      this.plans.getPlanInfo(principal.tenantId),
     ]);
 
     return {
@@ -66,6 +71,7 @@ export class MeController {
       permissions:
         (user.role?.permissions as Permission[] | undefined) ??
         DEFAULT_ROLE_PERMISSIONS[(user.role?.key ?? RoleKey.MEMBER) as RoleKey],
+      plan,
     };
   }
 }

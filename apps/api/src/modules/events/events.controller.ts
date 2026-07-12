@@ -4,6 +4,7 @@ import {
   CreateEventRequestSchema,
   EventStatus,
   Permission,
+  PlanFeature,
   UpdateEventRequestSchema,
   type AttendanceReport,
   type CreateEventRequest,
@@ -12,6 +13,7 @@ import {
 } from '@mvs/shared';
 import { CurrentUser, type RequestUser } from '../../common/auth/current-user.decorator';
 import { RequirePermissions } from '../../common/auth/permissions.decorator';
+import { RequiresFeature } from '../../common/plan/feature.decorator';
 import { ZodBody } from '../../common/pipes/zod-validation.pipe';
 import { EventsService } from './events.service';
 
@@ -25,6 +27,7 @@ export class EventsController {
     return this.events.list(user.tenantId, user.sub);
   }
 
+  @RequiresFeature(PlanFeature.EVENTS)
   @RequirePermissions(Permission.EVENT_CREATE)
   @Post()
   create(
@@ -34,6 +37,7 @@ export class EventsController {
     return this.events.create(user.tenantId, body);
   }
 
+  @RequiresFeature(PlanFeature.EVENTS)
   @RequirePermissions(Permission.EVENT_MANAGE)
   @Patch(':id')
   update(
@@ -44,6 +48,7 @@ export class EventsController {
     return this.events.update(user.tenantId, id, body);
   }
 
+  @RequiresFeature(PlanFeature.EVENTS)
   @RequirePermissions(Permission.EVENT_MANAGE)
   @Delete(':id')
   remove(@CurrentUser() user: RequestUser, @Param('id') id: string): Promise<{ id: string }> {
@@ -63,12 +68,14 @@ export class EventsController {
   }
 
   /** Presenter flips the event LIVE so attendance auto-marks on join. */
+  @RequiresFeature(PlanFeature.EVENTS)
   @RequirePermissions(Permission.PRESENT)
   @Post(':id/go-live')
   goLive(@CurrentUser() user: RequestUser, @Param('id') id: string): Promise<EventDTO> {
     return this.events.setStatus(user.tenantId, id, EventStatus.LIVE);
   }
 
+  @RequiresFeature(PlanFeature.EVENTS)
   @RequirePermissions(Permission.PRESENT)
   @Post(':id/end')
   end(@CurrentUser() user: RequestUser, @Param('id') id: string): Promise<EventDTO> {
@@ -76,6 +83,7 @@ export class EventsController {
   }
 
   /** Attendance report (registrants + who attended) as structured JSON. */
+  @RequiresFeature(PlanFeature.EVENTS)
   @RequirePermissions(Permission.EVENT_MANAGE)
   @Get(':id/attendance')
   attendance(@CurrentUser() user: RequestUser, @Param('id') id: string): Promise<AttendanceReport> {
@@ -83,6 +91,7 @@ export class EventsController {
   }
 
   /** Same report as a downloadable CSV (one row per registrant). */
+  @RequiresFeature(PlanFeature.EVENTS)
   @RequirePermissions(Permission.EVENT_MANAGE)
   @Get(':id/attendance.csv')
   async attendanceCsv(

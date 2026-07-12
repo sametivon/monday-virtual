@@ -11,6 +11,7 @@ import {
 import { defaultObjectsFor, presetFor, SCENE_REV } from '@mvs/config';
 import { SpaceType } from '@mvs/shared';
 import type { Prisma } from '@mvs/db';
+import { PlanService } from '../../common/plan/plan.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { Env } from '../../config/env';
 import type { MondayIdentity } from './monday-auth.service';
@@ -26,12 +27,23 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService<Env, true>,
+    private readonly plans: PlanService,
   ) {}
 
   async loginWithMondayIdentity(identity: MondayIdentity): Promise<AuthTokens> {
     const tenant = await this.ensureTenant(identity.mondayAccountId);
     await this.ensureDefaultRoles(tenant.id);
     await this.ensureStarterSpaces(tenant.id);
+
+    // Marketplace billing: sync the (signed) subscription claim onto the
+    // tenant, then enforce the seat cap for NEW users only — existing members
+    // always keep access.
+    await this.plans.syncFromSubscription(tenant.id, identity.subscription);
+    const existingUser = await this.prisma.forTenant(tenant.id).user.findUnique({
+      where: { tenantId_mondayUserId: { tenantId: tenant.id, mondayUserId: identity.mondayUserId } },
+      select: { id: true },
+    });
+    if (!existingUser) await this.plans.assertSeatAvailable(tenant.id);
 
     const memberRole = await this.prisma
       .forTenant(tenant.id)

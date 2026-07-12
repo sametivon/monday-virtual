@@ -6,6 +6,7 @@
 
 export * from './enums';
 export * from './permissions';
+export * from './plans';
 export * from './types';
 export * from './scene/index';
 export * from './realtime/index';

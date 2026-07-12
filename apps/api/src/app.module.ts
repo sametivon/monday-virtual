@@ -5,6 +5,8 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { JwtAuthGuard } from './common/auth/jwt-auth.guard';
 import { PermissionsGuard } from './common/auth/permissions.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { FeatureGuard } from './common/plan/feature.guard';
+import { PlanModule } from './common/plan/plan.module';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { RedisModule } from './common/redis/redis.module';
 import { loadEnv } from './config/env';
@@ -17,6 +19,7 @@ import { HealthModule } from './modules/health/health.module';
 import { MediaModule } from './modules/media/media.module';
 import { MeModule } from './modules/me/me.module';
 import { MondayModule } from './modules/monday/monday.module';
+import { MondayWebhooksModule } from './modules/monday-webhooks/monday-webhooks.module';
 import { RbacModule } from './modules/rbac/rbac.module';
 import { SpacesModule } from './modules/spaces/spaces.module';
 import { TenantModule } from './modules/tenant/tenant.module';
@@ -34,6 +37,7 @@ import { WhiteboardModule } from './modules/whiteboard/whiteboard.module';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     PrismaModule,
     RedisModule,
+    PlanModule,
     AnalyticsModule,
     AuthModule,
     ChatModule,
@@ -44,6 +48,7 @@ import { WhiteboardModule } from './modules/whiteboard/whiteboard.module';
     SpacesModule,
     MediaModule,
     MondayModule,
+    MondayWebhooksModule,
     RbacModule,
     TenantModule,
     UploadsModule,
@@ -53,6 +58,7 @@ import { WhiteboardModule } from './modules/whiteboard/whiteboard.module';
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
+    { provide: APP_GUARD, useClass: FeatureGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })

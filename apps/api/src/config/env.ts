@@ -29,6 +29,11 @@ const EnvSchema = z.object({
   MONDAY_OAUTH_REDIRECT_URI: z.string().url().optional(),
   MONDAY_SCOPES: z.string().default('me:read boards:read users:read account:read'),
 
+  // Plan for tenants with NO monday subscription (pre-marketplace, dev tokens).
+  // COMPANY = all features on (today's behavior); flip to TEAM/FREE once the
+  // Marketplace listing is live to turn plan enforcement on.
+  DEFAULT_PLAN: z.enum(['FREE', 'TEAM', 'COMPANY', 'ENTERPRISE']).default('COMPANY'),
+
   LIVEKIT_URL: z.string().optional(),
   LIVEKIT_API_KEY: z.string().optional(),
   LIVEKIT_API_SECRET: z.string().optional(),

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import type { SpaceSummaryDTO } from '@mvs/shared';
+import { PlanFeature, type SpaceSummaryDTO } from '@mvs/shared';
 import { api } from '@/lib/api';
 import { useSessionStore } from '@/stores/sessionStore';
 import { AnalyticsDashboard } from '@/ui/AnalyticsDashboard';
@@ -36,8 +36,20 @@ export default function HomePage() {
     return <Centered>⚠️ {error}</Centered>;
   }
 
+  // Plan-gated features (billing) — a user needs both the RBAC permission
+  // (checked inside each panel) and the plan feature to see the entry point.
+  const features = me?.plan?.features ?? [];
+  const has = (f: PlanFeature) => features.includes(f);
+
   return (
     <div className="flex h-full flex-col items-center justify-center gap-8 p-8">
+      {me?.plan?.isTrial && (
+        <div className="rounded-full bg-amber-400/15 px-4 py-1.5 text-sm text-amber-300 ring-1 ring-amber-400/40">
+          ✨ Trial plan
+          {me.plan.renewalDate ? ` · ends ${new Date(me.plan.renewalDate).toLocaleDateString()}` : ''} —
+          manage your subscription in monday.com
+        </div>
+      )}
       <header className="text-center">
         <h1 className="text-4xl font-bold text-brand-text">
           {me?.tenant.branding.productName ?? 'Virtual Spaces'}
@@ -47,10 +59,10 @@ export default function HomePage() {
         </p>
         <div className="mt-4 flex justify-center gap-2">
           <AvatarPicker />
-          <EventsPanel />
-          <BrandingSettings />
+          {has(PlanFeature.EVENTS) && <EventsPanel />}
+          {has(PlanFeature.BRANDING) && <BrandingSettings />}
           <TeamSettings />
-          <AnalyticsDashboard />
+          {has(PlanFeature.ANALYTICS) && <AnalyticsDashboard />}
         </div>
       </header>
 

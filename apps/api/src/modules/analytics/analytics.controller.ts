@@ -3,14 +3,18 @@ import {
   AnalyticsQuerySchema,
   HeatmapQuerySchema,
   Permission,
+  PlanFeature,
   type AnalyticsSummary,
   type HeatmapResponse,
 } from '@mvs/shared';
 import { CurrentUser, type RequestUser } from '../../common/auth/current-user.decorator';
 import { RequirePermissions } from '../../common/auth/permissions.decorator';
+import { RequiresFeature } from '../../common/plan/feature.decorator';
 import { ZodBody } from '../../common/pipes/zod-validation.pipe';
 import { AnalyticsService } from './analytics.service';
 
+// Analytics is a Company-plan capability — gate the whole controller.
+@RequiresFeature(PlanFeature.ANALYTICS)
 @Controller('analytics')
 export class AnalyticsController {
   constructor(private readonly analytics: AnalyticsService) {}

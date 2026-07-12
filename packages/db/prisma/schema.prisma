@@ -96,6 +96,9 @@ model Tenant {
   name            String
   mondayAccountId String       @unique
   status          TenantStatus @default(TRIAL)
+  /// Subscription plan (JSON TenantPlan from @mvs/shared) — synced from the
+  /// monday sessionToken subscription claim at login and monetization webhooks.
+  plan            Json?
 
   branding   Branding?
   users      User[]

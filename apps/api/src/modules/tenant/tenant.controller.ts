@@ -3,11 +3,13 @@ import {
   BrandingPaletteSchema,
   BrandingUpdateSchema,
   Permission,
+  PlanFeature,
   type BrandingDTO,
   type BrandingUpdate,
 } from '@mvs/shared';
 import { CurrentUser, type RequestUser } from '../../common/auth/current-user.decorator';
 import { RequirePermissions } from '../../common/auth/permissions.decorator';
+import { RequiresFeature } from '../../common/plan/feature.decorator';
 import { ZodBody } from '../../common/pipes/zod-validation.pipe';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
@@ -16,6 +18,7 @@ export class TenantController {
   constructor(private readonly prisma: PrismaService) {}
 
   /** White-label: update the tenant's product name / logo / palette. */
+  @RequiresFeature(PlanFeature.BRANDING)
   @RequirePermissions(Permission.BRANDING_EDIT)
   @Patch('branding')
   async updateBranding(
