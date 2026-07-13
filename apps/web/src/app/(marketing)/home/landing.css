@@ -12,7 +12,7 @@
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --wrap: 1120px;
   --pad: clamp(1.25rem, 4vw, 2rem);
-  --sec: clamp(4.5rem, 9vw, 8rem);
+  --sec: clamp(3.8rem, 6.5vw, 6rem);
 
   background: var(--paper);
   color: var(--ink);
@@ -175,18 +175,18 @@
 /* closing */
 .mv-landing .closing { position: relative; overflow: hidden; }
 .mv-landing .closing .veil { position: absolute; inset: 0; z-index: 1; background: radial-gradient(90% 120% at 50% 40%, rgba(250,247,242,0), rgba(250,247,242,.55)); }
-.mv-landing .closing .wrap { position: relative; z-index: 2; text-align: center; padding-block: clamp(5rem, 11vw, 9rem); }
+.mv-landing .closing .wrap { position: relative; z-index: 2; text-align: center; }
 .mv-landing .closing h2 { font-size: clamp(2.1rem, 4.6vw, 3.4rem); line-height: 1.05; margin-inline: auto; max-width: 18ch; }
 .mv-landing .closing p { margin: 1.2rem auto 0; color: #4a4356; max-width: 46ch; }
 .mv-landing .closing .cta-row { justify-content: center; }
 
 /* footer */
 .mv-landing footer { border-top: 1px solid var(--line); background: var(--paper); }
-.mv-landing .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1.5rem; padding-block: 2.6rem; align-items: center; }
+.mv-landing .foot { display: flex; flex-direction: column; align-items: center; gap: 1.1rem; padding-block: 2rem 2.3rem; text-align: center; }
 .mv-landing .foot .brand { font-size: 1.1rem; }
 .mv-landing .foot-links { display: flex; gap: 1.4rem; font-size: .9rem; color: var(--muted); }
 .mv-landing .foot-links a { text-decoration: none; }
-.mv-landing .foot-note { width: 100%; font-size: .8rem; color: #8a8397; border-top: 1px solid var(--line); padding-top: 1.3rem; }
+.mv-landing .foot-note { max-width: 68ch; font-size: .8rem; color: #8a8397; margin-top: .2rem; }
 
 @media (max-width: 860px) {
   .mv-landing .nav-links { display: none; }
@@ -507,10 +507,10 @@
 .mv-landing .steps-wrap { display: block; }
 
 /* === Closing + premium footer === */
-.mv-landing .closing-inner { position: relative; z-index: 2; text-align: center; padding-block: clamp(4.5rem, 10vw, 8rem) clamp(3rem, 6vw, 5rem); }
+.mv-landing .closing-inner { position: relative; z-index: 2; text-align: center; padding-block: clamp(3.8rem, 7vw, 6rem) clamp(2.6rem, 4.5vw, 3.6rem); }
 .mv-landing .closing-sub { margin: 1.2rem auto 0; color: #4a4356; max-width: 46ch; }
 .mv-landing .foot-glass { position: relative; z-index: 2; border-top: 1px solid rgba(33,28,41,.09); background: rgba(250,247,242,.55); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-.mv-landing .foot-glass .foot { padding-block: 2.4rem; }
+.mv-landing .foot-glass .foot { padding-block: 2rem 2.3rem; }
 
 /* === Responsive === */
 @media (max-width: 1060px) {
