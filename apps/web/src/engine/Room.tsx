@@ -111,10 +111,11 @@ function Walls({
   venue?: boolean;
 }) {
   const H = interior.wallHeight;
-  const fabric = useTiledPbr('fabric', 6, 2);
-  // Venue walls read as warm wood planking (eXp-style) instead of fabric.
+  // Venue walls read as warm washed wood planking; other rooms are FLAT
+  // plaster — the old fabric texture multiplied every tint into a dark
+  // gray-green no matter how light the preset color was.
   const woodWall = useTiledPbr('wood', Math.max(width, depth) / 3.2, H / 3.2);
-  const wallTex = venue ? woodWall : fabric;
+  const wallTex = venue ? woodWall : null;
   const wallTint = venue ? lighten(interior.wallColor, 0.1) : interior.wallColor;
   const walls: { pos: [number, number, number]; rot: number; len: number; panels: boolean }[] = [
     { pos: [0, H / 2, -depth / 2], rot: 0, len: width, panels: true },
@@ -133,12 +134,16 @@ function Walls({
               the room stays visible instead of going black. */}
           <mesh receiveShadow>
             <planeGeometry args={[w.len, H]} />
-            <meshStandardMaterial
-              map={wallTex.map}
-              normalMap={wallTex.normalMap}
-              roughnessMap={wallTex.roughnessMap}
-              color={wallTint}
-            />
+            {wallTex ? (
+              <meshStandardMaterial
+                map={wallTex.map}
+                normalMap={wallTex.normalMap}
+                roughnessMap={wallTex.roughnessMap}
+                color={wallTint}
+              />
+            ) : (
+              <meshStandardMaterial color={wallTint} roughness={0.94} />
+            )}
           </mesh>
           {/* Wall paneling (S2): venues get vertical wood-slat groups; other
               rooms get quiet framed art slabs. No emissive edges anywhere —
@@ -219,8 +224,8 @@ function Ceiling({
     };
   }, [venue, width, depth]);
   const lights = useMemo(() => {
-    const cols = Math.max(2, Math.round(width / 9));
-    const rows = Math.max(2, Math.round(depth / 9));
+    const cols = Math.max(2, Math.round(width / 12));
+    const rows = Math.max(2, Math.round(depth / 12));
     const out: [number, number][] = [];
     for (let i = 0; i < cols; i++) {
       for (let j = 0; j < rows; j++) {
@@ -271,8 +276,8 @@ function Ceiling({
           // content surfaces (live video / slides) — DESIGN.md rule.
           <group key={key} position={[x, -0.06, z]}>
             <mesh>
-              <boxGeometry args={[2.7, 0.1, 1.4]} />
-              <meshStandardMaterial color="#2b2731" roughness={0.6} metalness={0.2} />
+              <boxGeometry args={[2.7, 0.08, 1.4]} />
+              <meshStandardMaterial color="#57504a" roughness={0.7} metalness={0.15} />
             </mesh>
             <mesh position={[0, -0.051, 0]} rotation={[Math.PI / 2, 0, 0]}>
               <planeGeometry args={[2.45, 1.15]} />

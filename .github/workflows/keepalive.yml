@@ -1,0 +1,19 @@
+# Keep the Render free-tier services awake (they spin down after ~15 min idle;
+# waking takes 30-50s, which users experience as a stuck "Reconnecting…").
+# GitHub cron isn't precise to the minute, but any cadence under the idle
+# window keeps both services hot. Also keeps the event-reminder cron honest —
+# it only fires while the API is awake (docs/LAUNCH.md §9).
+name: keep-alive
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API + realtime
+        run: |
+          curl -sf --max-time 60 https://mvs-api-e7o2.onrender.com/health > /dev/null && echo "api awake"
+          curl -sf --max-time 60 https://mvs-realtime.onrender.com/health > /dev/null && echo "realtime awake"

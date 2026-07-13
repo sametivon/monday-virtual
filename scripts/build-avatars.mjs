@@ -19,6 +19,9 @@ import { resolve } from 'node:path';
 
 const KEEP_CLIPS = new Set(['Idle', 'Walk', 'Run', 'Wave']);
 
+/** Game props that have no business in an office (the Suit ships a pistol). */
+const PROP_PATTERN = /gun|pistol|knife|sword|weapon|revolver|rifle|blade|axe/i;
+
 // Axis-angle deltas (degrees) applied on top of the Idle frame-0 local
 // rotation, per bone. X is the bend axis on this rig's leg bones.
 const SIT_DELTAS = {
@@ -28,8 +31,8 @@ const SIT_DELTAS = {
   'LowerLeg.R': { axis: [1, 0, 0], deg: 85 },
   Spine: { axis: [1, 0, 0], deg: 8 },
 };
-/** Hips drop so the seat height matches the chair cushions (~0.44m). */
-const HIPS_DROP = 0.32;
+/** Seated hip height — chair seat pans sit ~0.45m; hips land just above. */
+const SIT_HIP_Y = 0.48;
 
 function axisAngleToQuat([x, y, z], deg) {
   const half = (deg * Math.PI) / 360;
@@ -55,6 +58,14 @@ for (const pair of pairs) {
   const [outName, file] = pair.split('=');
   const doc = await io.read(resolve(inDir, file));
   const root = doc.getRoot();
+
+  // De-weapon: drop prop meshes parented into the hands.
+  for (const node of root.listNodes()) {
+    if (PROP_PATTERN.test(node.getName())) {
+      console.log(`  stripped prop: ${node.getName()}`);
+      node.dispose();
+    }
+  }
 
   // Frame-0 pose of Idle, per targeted node.
   const idle = root.listAnimations().find((a) => a.getName() === 'Idle');
@@ -87,7 +98,9 @@ for (const pair of pairs) {
         value = quatMul(value, axisAngleToQuat(axis, deg));
       }
       if (path === 'translation' && name === 'Hips') {
-        value = [value[0], value[1] - HIPS_DROP, value[2]];
+        // Per-model drop: land the hips at chair-seat height regardless of
+        // how tall this character's idle stance is.
+        value = [value[0], Math.min(value[1], SIT_HIP_Y), value[2]];
       }
       const acc = doc
         .createAccessor(`Sit/${name}/${path}`)

@@ -160,10 +160,10 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
         <RemoteAvatars />
       </Suspense>
 
-      {/* Post-processing: bloom makes the emissive accents (stage lip, LED
-          rods, screen glow) actually glow; a whisper of vignette focuses the
-          frame. High/medium tiers only — low renders the bare pipeline. */}
-      {tier !== 'low' && (
+      {/* Post-processing: bloom + vignette are HIGH-tier only — the
+          full-screen composer passes were the main cost on mid GPUs.
+          Medium keeps IBL; low is the bare pipeline. */}
+      {tier === 'high' && (
         <EffectComposer multisampling={0}>
           <Bloom luminanceThreshold={1} mipmapBlur intensity={0.5} />
           <Vignette eskil={false} offset={0.12} darkness={0.55} />
