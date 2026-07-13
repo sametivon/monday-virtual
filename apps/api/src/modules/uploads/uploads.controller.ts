@@ -32,7 +32,7 @@ export class UploadsController {
     @Body(new ZodBody(UploadSignRequestSchema)) dto: UploadSignRequest,
   ): Promise<UploadSignResponse> {
     if (!hasPermission(user.permissions, KIND_PERMISSION[dto.kind])) {
-      throw new ForbiddenException(`You lack permission to upload a ${dto.kind}`);
+      throw new ForbiddenException(`You don't have permission to upload a ${dto.kind} — ask a workspace admin.`);
     }
     return this.uploads.sign(user.tenantId, dto);
   }

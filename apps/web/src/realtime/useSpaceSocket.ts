@@ -122,6 +122,9 @@ export function useSpaceSocket(spaceId: string) {
         conn({ status: 'reconnecting' });
       }
     });
+    // Graceful deploy drain (C4): the server says "restart", the banner says
+    // "Server updating…" instead of implying a network problem.
+    socket.on('server:restarting', () => conn({ serverRestarting: true }));
 
     socket.on('presence:sync', sync);
     socket.on('player:joined', upsert);

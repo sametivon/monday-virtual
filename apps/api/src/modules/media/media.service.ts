@@ -26,7 +26,7 @@ export class MediaService {
     const apiSecret = this.config.get('LIVEKIT_API_SECRET', { infer: true });
     const url = this.config.get('LIVEKIT_URL', { infer: true });
     if (!apiKey || !apiSecret || !url) {
-      throw new ServiceUnavailableException('LiveKit is not configured');
+      throw new ServiceUnavailableException("Voice & video are not available yet — media hosting has not been configured for this deployment.");
     }
 
     // Authorize: the space must exist and be visible to this tenant.

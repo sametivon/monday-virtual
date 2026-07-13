@@ -13,6 +13,7 @@ import { SpaceType } from '@mvs/shared';
 import type { Prisma } from '@mvs/db';
 import { PlanService } from '../../common/plan/plan.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import type { Env } from '../../config/env';
 import type { MondayIdentity } from './monday-auth.service';
 
@@ -28,6 +29,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService<Env, true>,
     private readonly plans: PlanService,
+    private readonly mail: MailService,
   ) {}
 
   async loginWithMondayIdentity(identity: MondayIdentity): Promise<AuthTokens> {
@@ -63,6 +65,12 @@ export class AuthService {
       include: { role: true },
     });
     user = await this.ensureTenantHasAdmin(tenant.id, user);
+
+    // First sight of this user — welcome them. Fire-and-forget: mail must
+    // never slow or fail a login.
+    if (!existingUser) {
+      void this.mail.sendWelcome(tenant.id, { name: user.name, email: user.email });
+    }
 
     const roleKey = (user.role?.key ?? RoleKey.MEMBER) as RoleKey;
     const permissions = (user.role?.permissions as Permission[]) ?? DEFAULT_ROLE_PERMISSIONS[roleKey];

@@ -44,16 +44,16 @@ export class UploadsService {
   async sign(tenantId: string, req: UploadSignRequest): Promise<UploadSignResponse> {
     const limits = UPLOAD_LIMITS[req.kind];
     if (!limits.mime.test(req.contentType)) {
-      throw new UnsupportedMediaTypeException(`${req.contentType} is not allowed for ${req.kind}`);
+      throw new UnsupportedMediaTypeException(`That file type (${req.contentType}) isn't supported for ${req.kind} uploads.`);
     }
     if (req.size > limits.maxBytes) {
       throw new PayloadTooLargeException(
-        `${req.kind} must be ≤ ${Math.round(limits.maxBytes / 1024 / 1024)}MB`,
+        `That file is too large — ${req.kind} uploads are capped at ${Math.round(limits.maxBytes / 1024 / 1024)}MB.`,
       );
     }
 
     const cfg = this.client();
-    if (!cfg) throw new ServiceUnavailableException('Object storage is not configured');
+    if (!cfg) throw new ServiceUnavailableException("Uploads are not available yet — file storage has not been configured for this deployment.");
 
     const ext = extensionFor(req.contentType);
     // Tenant-scoped key so assets can never collide across tenants and a

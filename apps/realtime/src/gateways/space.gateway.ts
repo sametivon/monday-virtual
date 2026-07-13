@@ -90,6 +90,14 @@ export class SpaceGateway
 
   onModuleDestroy(): void {
     if (this.occupancyTimer) clearInterval(this.occupancyTimer);
+    // Graceful deploy drain (C4): tell every client this is a restart, not a
+    // network failure — the UI shows "Server updating…" and socket.io
+    // auto-reconnects to the new instance. Shutdown hooks are enabled in main.
+    try {
+      this.server.emit('server:restarting');
+    } catch {
+      /* server may already be closed mid-teardown */
+    }
   }
 
   async handleConnection(client: Socket): Promise<void> {

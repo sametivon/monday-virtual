@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { JwtAuthGuard } from './common/auth/jwt-auth.guard';
 import { PermissionsGuard } from './common/auth/permissions.guard';
@@ -10,6 +11,7 @@ import { PlanModule } from './common/plan/plan.module';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { RedisModule } from './common/redis/redis.module';
 import { loadEnv } from './config/env';
+import { MailModule } from './modules/mail/mail.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ChatModule } from './modules/chat/chat.module';
@@ -35,6 +37,9 @@ import { WhiteboardModule } from './modules/whiteboard/whiteboard.module';
       validate: (raw) => loadEnv(raw),
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
+    // Cron host for the event-reminder sweep (no-op unless mail is configured).
+    ScheduleModule.forRoot(),
+    MailModule,
     PrismaModule,
     RedisModule,
     PlanModule,

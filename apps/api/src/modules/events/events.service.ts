@@ -13,6 +13,7 @@ import {
 } from '@mvs/shared';
 import type { Prisma } from '@mvs/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 
 /**
  * Event mode (Phase 3): scheduled conferences/workshops/town-halls/trainings
@@ -23,7 +24,10 @@ import { PrismaService } from '../../common/prisma/prisma.service';
  */
 @Injectable()
 export class EventsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mail: MailService,
+  ) {}
 
   async list(tenantId: string, userId: string): Promise<EventDTO[]> {
     const events = await this.prisma
@@ -34,7 +38,7 @@ export class EventsService {
 
   async create(tenantId: string, input: CreateEventRequest): Promise<EventDTO> {
     if (new Date(input.endsAt) <= new Date(input.startsAt)) {
-      throw new BadRequestException('endsAt must be after startsAt');
+      throw new BadRequestException('The event has to end after it starts — check the times.');
     }
     if (input.spaceId) await this.assertSpace(tenantId, input.spaceId);
 
@@ -60,7 +64,7 @@ export class EventsService {
     if (patch.spaceId) await this.assertSpace(tenantId, patch.spaceId);
     const startsAt = patch.startsAt ? new Date(patch.startsAt) : event.startsAt;
     const endsAt = patch.endsAt ? new Date(patch.endsAt) : event.endsAt;
-    if (endsAt <= startsAt) throw new BadRequestException('endsAt must be after startsAt');
+    if (endsAt <= startsAt) throw new BadRequestException('The event has to end after it starts — check the times.');
 
     const updated = await this.prisma.raw.event.update({
       where: { id: event.id },
@@ -90,11 +94,28 @@ export class EventsService {
     if (event.status === EventStatus.ENDED || event.status === EventStatus.CANCELLED) {
       throw new BadRequestException('Event is no longer open for registration');
     }
-    await this.prisma.raw.eventRegistration.upsert({
+    const reg = await this.prisma.raw.eventRegistration.upsert({
       where: { eventId_userId: { eventId: event.id, userId } },
       update: {},
       create: { tenantId, eventId: event.id, userId },
     });
+    // Confirmation (with calendar invite) only on the FIRST registration —
+    // an idempotent re-RSVP shouldn't re-mail. Fire-and-forget.
+    if (this.mail.enabled && reg.registeredAt.getTime() > Date.now() - 5_000) {
+      void this.prisma
+        .forTenant(tenantId)
+        .user.findFirst({ where: { id: userId }, select: { name: true, email: true } })
+        .then((user) => {
+          if (!user) return;
+          return this.mail.sendRsvpConfirmation(tenantId, user, {
+            id: event.id,
+            title: event.title,
+            startsAt: event.startsAt,
+            endsAt: event.endsAt,
+          });
+        })
+        .catch(() => undefined);
+    }
     return this.toDto(await this.findWithRegs(tenantId, eventId), userId);
   }
 

@@ -48,6 +48,12 @@ const EnvSchema = z.object({
   /** Public base URL the bucket is served from (CDN or bucket public URL). */
   S3_PUBLIC_BASE_URL: z.string().url().optional(),
 
+  // Transactional mail (Resend). Both optional — mail silently no-ops until
+  // set, and sending is always fire-and-forget (never blocks a request).
+  RESEND_API_KEY: z.string().optional(),
+  /** RFC 5322 sender, e.g. `MondayVirtual <hello@mondayvirtual.eu>`. */
+  MAIL_FROM: z.string().optional(),
+
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),

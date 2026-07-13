@@ -30,6 +30,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
+      // The throttler's default body leaks its class name
+      // ("ThrottlerException: Too Many Requests") — replace with human copy.
+      if (status === HttpStatus.TOO_MANY_REQUESTS) {
+        httpAdapter.reply(
+          ctx.getResponse(),
+          {
+            statusCode: status,
+            message: "You're doing that a little too fast — give it a few seconds and try again.",
+          },
+          status,
+        );
+        return;
+      }
       httpAdapter.reply(ctx.getResponse(), exception.getResponse(), status);
       return;
     }
@@ -41,7 +54,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const body = {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: this.isProd ? 'Internal server error' : err.message,
+      message: this.isProd
+        ? 'Something went wrong on our side. Please try again — if it keeps happening, reload the app.'
+        : err.message,
       ts: new Date().toISOString(),
     };
     httpAdapter.reply(ctx.getResponse(), body, HttpStatus.INTERNAL_SERVER_ERROR);

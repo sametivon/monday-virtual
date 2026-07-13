@@ -193,6 +193,8 @@ export interface ServerToClientEvents {
   'object:opened': (p: { objectId: string; data?: unknown }) => void;
   /** Broadcast active slide index for a deck-bound screen (late joiners get it via presence:sync of the object config). */
   'slide:goto': (p: SlideControlPayload) => void;
+  /** Graceful deploy drain (C4): server is going down; reconnect will land on the new instance. */
+  'server:restarting': () => void;
   error: (e: { code: string; message: string }) => void;
 }
 
