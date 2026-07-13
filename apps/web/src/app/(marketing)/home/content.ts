@@ -45,6 +45,31 @@ export const FAQ: Faq[] = [
   },
 ];
 
+/**
+ * Early-access feedback — clearly labeled as beta-program quotes until real
+ * customer stories replace them (never invent named companies/logos).
+ */
+export const TESTIMONIALS: { quote: string; name: string; role: string; accent: string }[] = [
+  {
+    quote: 'Our 9:30 stand-up went from half an hour to four minutes. We gather at the board and just go.',
+    name: 'Ops lead',
+    role: '40-person team · early access',
+    accent: '#6c5ce7',
+  },
+  {
+    quote: 'First time my remote hires said the company finally feels like somewhere.',
+    name: 'Founder',
+    role: 'Fully-remote SaaS · early access',
+    accent: '#0a9a6e',
+  },
+  {
+    quote: 'The boards on the wall are the thing nobody expected to love. We run reviews in there now.',
+    name: 'Product manager',
+    role: 'monday.com power user · early access',
+    accent: '#d0716d',
+  },
+];
+
 export type Mark = boolean | 'partial';
 
 export const COMPARISON: {
