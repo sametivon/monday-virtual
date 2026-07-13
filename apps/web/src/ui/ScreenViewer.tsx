@@ -1,15 +1,18 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { Minimize2, MonitorOff } from 'lucide-react';
 import type { SceneObjectDTO } from '@mvs/shared';
 import { useScreenShareTile } from '@/media/useScreenShare';
 import { useSlideStore } from '@/stores/slideStore';
+import { Button } from '@/ui/primitives';
 
 /**
  * Fullscreen viewer for a stage SCREEN: click a screen in-world and the live
  * share (or current slide) opens as a whole, filling the window — so you can
  * actually read a presentation from any seat instead of squinting at the 3D
- * panel. Reliable HTML overlay (NOT a camera move). "Zoom out" / Esc closes it.
+ * panel. Reliable HTML overlay (NOT a camera move). "Exit fullscreen" / Esc
+ * closes it.
  */
 export function ScreenViewer({ object, onClose }: { object: SceneObjectDTO; onClose: () => void }) {
   const tile = useScreenShareTile();
@@ -43,23 +46,30 @@ export function ScreenViewer({ object, onClose }: { object: SceneObjectDTO; onCl
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm">
-      <button
+    // Content-viewing surface: intentionally dark (ink at 95%), like a cinema.
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-text/95 backdrop-blur-sm">
+      <Button
+        variant="ghost"
+        icon={Minimize2}
         onClick={onClose}
-        className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-red-600"
+        className="absolute left-4 top-4 z-10"
       >
-        🔍 Zoom out
-      </button>
+        Exit fullscreen
+      </Button>
       {tile ? (
         <video ref={videoRef} autoPlay playsInline muted className="max-h-full max-w-full object-contain" />
       ) : slideUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={slideUrl} alt="Current slide" className="max-h-full max-w-full object-contain" />
       ) : (
-        <div className="text-center text-white/60">
-          <div className="text-3xl">🖥️</div>
-          <p className="mt-3 text-sm">Nobody is presenting right now.</p>
-          <p className="mt-1 text-xs text-white/40">When someone shares their screen, it shows here.</p>
+        // Hand-rolled empty state: EmptyState's ink text would vanish on the
+        // dark viewer, so this block is white-tinted on purpose.
+        <div className="flex flex-col items-center gap-3 px-6 text-center">
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white/80">
+            <MonitorOff size={20} strokeWidth={1.75} aria-hidden="true" />
+          </span>
+          <p className="font-display text-lg text-white/90">Nobody is presenting right now</p>
+          <p className="text-sm text-white/55">When someone shares their screen, it shows here.</p>
         </div>
       )}
     </div>

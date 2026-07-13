@@ -47,12 +47,13 @@ function Tile({ tile }: { tile: VideoTile }) {
 
   return (
     <div
-      className={`relative overflow-hidden rounded-lg border border-white/10 bg-black/60 ${
+      className={`relative overflow-hidden rounded-md border border-line/15 bg-brand-text shadow-e1 ${
         tile.kind === 'screen' ? 'h-36 w-64' : 'h-28 w-40'
       }`}
     >
       <video ref={ref} muted={tile.local} className="h-full w-full object-cover" />
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-0.5 text-xs">
+      {/* Video content is dark — white-on-video is the correct exception here. */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-brand-text/70 to-transparent px-2 pb-1 pt-3 text-xs text-white">
         {tile.local ? 'You' : tile.participantName}
         {tile.kind === 'screen' ? ' · screen' : ''}
       </div>

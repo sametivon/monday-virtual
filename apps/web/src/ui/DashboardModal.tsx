@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Database, LayoutDashboard, Pin } from 'lucide-react';
 import { Permission, type MondayBoardData, type MondayBoardSummary, type SceneObjectDTO } from '@mvs/shared';
 import { api } from '@/lib/api';
 import { inMondayIframe } from '@/monday/client';
@@ -13,6 +14,7 @@ import {
   type BoardGroup,
 } from '@/monday/useBoardData';
 import { useSessionStore } from '@/stores/sessionStore';
+import { EmptyState, IconButton, Modal, Skeleton, Tooltip } from '@/ui/primitives';
 
 type DashboardView = 'table' | 'pipeline' | 'workload';
 
@@ -133,137 +135,172 @@ export function DashboardModal({
   const activeView = views.find((v) => v.id === view && v.enabled) ? view : 'table';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-white/10 bg-brand-surface"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-white/10 p-4">
-          <div>
-            <h2 className="text-lg font-semibold">📊 {config.label ?? 'Board data'}</h2>
-            {data && (
-              <div className="text-xs text-white/40">
-                {data.items.length} items · updated{' '}
-                {new Date(data.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                {data.cached ? ' (cached)' : ''}
-              </div>
-            )}
+    <Modal
+      size="lg"
+      onClose={onClose}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <LayoutDashboard
+            size={17}
+            strokeWidth={1.75}
+            className="text-brand-primary"
+            aria-hidden="true"
+          />
+          {config.label ?? 'Board data'}
+        </span>
+      }
+      headerExtra={
+        canPin && boardId && boardId !== pinnedId ? (
+          <Tooltip label="Show this board on the 3D panel for everyone">
+            <IconButton
+              icon={Pin}
+              aria-label="Pin this board to the panel"
+              size="sm"
+              disabled={pinning}
+              onClick={() => void pin()}
+            />
+          </Tooltip>
+        ) : undefined
+      }
+    >
+      <div className="px-5 py-4">
+        {data && (
+          <div className="mb-3 text-xs text-brand-text/50">
+            {data.items.length} items · updated{' '}
+            {new Date(data.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {data.cached ? ' (cached)' : ''}
           </div>
-          <button onClick={onClose} className="text-white/60 hover:text-white">✕</button>
-        </div>
+        )}
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {outsideMonday && (
-            <Empty>Live board data is available when this space runs inside monday.com.</Empty>
-          )}
-          {error && <Empty>⚠️ {error}</Empty>}
-          {!outsideMonday && !error && !data && <Empty>Loading board…</Empty>}
+        {outsideMonday && (
+          <EmptyState
+            icon={Database}
+            title="Open inside monday.com"
+            body="Live board data is available when this space runs inside monday.com."
+          />
+        )}
+        {error && <EmptyState icon={AlertTriangle} title="Couldn’t load board data" body={error} />}
+        {!outsideMonday && !error && !data && (
+          <div className="space-y-2 py-2" aria-busy="true">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-2/3" />
+          </div>
+        )}
 
-          {boards && boards.length > 0 && (
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              {boards.map((b) => (
+        {boards && boards.length > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-1 rounded-md bg-line/8 p-1 text-xs">
+            {boards.map((b) => (
+              <button
+                key={b.id}
+                onClick={() => setBoardId(b.id)}
+                className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 font-medium transition ${
+                  boardId === b.id
+                    ? 'bg-brand-primary text-white shadow-e1'
+                    : 'text-brand-text/60 hover:text-brand-text'
+                }`}
+              >
+                {b.name}
+                {pinnedId === b.id && <Pin size={11} strokeWidth={1.75} aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {breakdown.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {breakdown.map(([status, count]) => (
+              <div key={status} className="min-w-[72px] rounded-md bg-brand-bg px-3 py-2">
+                <div className="text-xl font-semibold tabular-nums text-brand-text">{count}</div>
+                <div className="text-xs text-brand-text/55">{status}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {data && views.filter((v) => v.enabled).length > 1 && (
+          <div className="mb-4 inline-flex gap-1 rounded-md bg-line/8 p-1 text-xs">
+            {views
+              .filter((v) => v.enabled)
+              .map((v) => (
                 <button
-                  key={b.id}
-                  onClick={() => setBoardId(b.id)}
-                  className={`rounded-lg px-3 py-1 text-xs transition ${
-                    boardId === b.id ? 'bg-brand-primary' : 'bg-white/10 hover:bg-white/20'
+                  key={v.id}
+                  onClick={() => setView(v.id)}
+                  className={`rounded-sm px-3 py-1 font-medium transition ${
+                    activeView === v.id
+                      ? 'bg-brand-primary text-white shadow-e1'
+                      : 'text-brand-text/60 hover:text-brand-text'
                   }`}
                 >
-                  {b.name}
-                  {pinnedId === b.id && ' 📌'}
+                  {v.label}
                 </button>
               ))}
-              {canPin && boardId && boardId !== pinnedId && (
-                <button
-                  onClick={() => void pin()}
-                  disabled={pinning}
-                  title="Show this board on the 3D panel for everyone"
-                  className="ml-auto rounded-lg border border-brand-primary/60 px-3 py-1 text-xs transition hover:bg-brand-primary disabled:opacity-50"
-                >
-                  {pinning ? 'Pinning…' : '📌 Pin to panel'}
-                </button>
-              )}
-            </div>
-          )}
+          </div>
+        )}
 
-          {breakdown.length > 0 && (
-            <div className="mb-4 flex flex-wrap gap-2">
-              {breakdown.map(([status, count]) => (
-                <div key={status} className="rounded-lg bg-white/10 px-3 py-2">
-                  <div className="text-xl font-bold">{count}</div>
-                  <div className="text-xs text-white/50">{status}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {data && views.filter((v) => v.enabled).length > 1 && (
-            <div className="mb-4 flex gap-1 rounded-lg bg-white/5 p-1 text-xs">
-              {views
-                .filter((v) => v.enabled)
-                .map((v) => (
-                  <button
-                    key={v.id}
-                    onClick={() => setView(v.id)}
-                    className={`rounded-md px-3 py-1 transition ${
-                      activeView === v.id ? 'bg-brand-primary' : 'text-white/60 hover:text-white'
-                    }`}
-                  >
-                    {v.label}
-                  </button>
+        {data && activeView === 'table' && (
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-line/10 text-[11px] uppercase tracking-wide text-brand-text/55">
+                <th className="py-2 pr-3 font-semibold">Item</th>
+                {visibleColumns.map((c) => (
+                  <th key={c.id} className="py-2 pr-3 font-semibold">
+                    {c.title}
+                  </th>
                 ))}
-            </div>
-          )}
-
-          {data && activeView === 'table' && (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 text-xs uppercase text-white/40">
-                  <th className="py-2 pr-3">Item</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.items.map((item) => (
+                <tr key={item.id} className="border-b border-line/8">
+                  <td className="py-2 pr-3 font-medium text-brand-text">{item.name}</td>
                   {visibleColumns.map((c) => (
-                    <th key={c.id} className="py-2 pr-3">{c.title}</th>
+                    <td key={c.id} className="py-2 pr-3 text-brand-text/70">
+                      {String(item.values[c.id] ?? '—')}
+                    </td>
                   ))}
                 </tr>
-              </thead>
-              <tbody>
-                {data.items.map((item) => (
-                  <tr key={item.id} className="border-b border-white/5">
-                    <td className="py-2 pr-3 font-medium">{item.name}</td>
-                    {visibleColumns.map((c) => (
-                      <td key={c.id} className="py-2 pr-3 text-white/70">
-                        {String(item.values[c.id] ?? '—')}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+              ))}
+            </tbody>
+          </table>
+        )}
 
-          {data && activeView === 'pipeline' && <Pipeline groups={pipeline} />}
-          {data && activeView === 'workload' && <Workload groups={workload} />}
-        </div>
+        {data && activeView === 'pipeline' && <Pipeline groups={pipeline} />}
+        {data && activeView === 'workload' && <Workload groups={workload} />}
       </div>
-    </div>
+    </Modal>
   );
 }
 
 /** Kanban-style columns, one per status value, each listing its items. */
 function Pipeline({ groups }: { groups: BoardGroup[] }) {
-  if (groups.length === 0) return <Empty>No status column to build a pipeline from.</Empty>;
+  if (groups.length === 0) {
+    return (
+      <EmptyState
+        icon={Database}
+        title="No pipeline to show"
+        body="This board has no status column to build a pipeline from."
+      />
+    );
+  }
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
       {groups.map((g) => (
-        <div key={g.key} className="flex w-48 shrink-0 flex-col rounded-xl bg-white/5">
-          <div className="flex items-center justify-between border-b border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white/60">
+        <div key={g.key} className="flex w-48 shrink-0 flex-col rounded-md bg-brand-bg">
+          <div className="flex items-center justify-between border-b border-line/8 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-brand-text/55">
             <span className="truncate">{g.key}</span>
-            <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-white/70">
+            <span className="ml-2 rounded-full bg-line/8 px-2 py-0.5 tabular-nums text-brand-text/70">
               {g.items.length}
             </span>
           </div>
           <div className="flex flex-col gap-2 p-2">
             {g.items.map((item) => (
-              <div key={item.id} className="rounded-lg bg-white/10 px-3 py-2 text-sm">
+              <div
+                key={item.id}
+                className="rounded-sm border border-line/10 bg-brand-surface px-3 py-2 text-sm text-brand-text shadow-e1"
+              >
                 {item.name}
               </div>
             ))}
@@ -276,30 +313,34 @@ function Pipeline({ groups }: { groups: BoardGroup[] }) {
 
 /** Horizontal bars, one per assignee, length proportional to their item count. */
 function Workload({ groups }: { groups: BoardGroup[] }) {
-  if (groups.length === 0) return <Empty>No people column to measure workload from.</Empty>;
+  if (groups.length === 0) {
+    return (
+      <EmptyState
+        icon={Database}
+        title="No workload to show"
+        body="This board has no people column to measure workload from."
+      />
+    );
+  }
   const max = Math.max(...groups.map((g) => g.items.length), 1);
   return (
     <div className="flex flex-col gap-2">
       {groups.map((g) => (
         <div key={g.key} className="flex items-center gap-3 text-sm">
-          <div className="w-32 shrink-0 truncate text-white/70" title={g.key}>
+          <div className="w-32 shrink-0 truncate text-brand-text/70" title={g.key}>
             {g.key}
           </div>
-          <div className="relative h-6 flex-1 overflow-hidden rounded-md bg-white/5">
+          <div className="relative h-6 flex-1 overflow-hidden rounded-md bg-line/8">
             <div
               className="h-full rounded-md bg-brand-primary/80"
               style={{ width: `${(g.items.length / max) * 100}%` }}
             />
-            <span className="absolute inset-y-0 left-2 flex items-center text-xs font-medium">
-              {g.items.length}
-            </span>
           </div>
+          <span className="w-6 shrink-0 text-right text-xs font-medium tabular-nums text-brand-text/70">
+            {g.items.length}
+          </span>
         </div>
       ))}
     </div>
   );
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return <div className="py-10 text-center text-sm text-white/50">{children}</div>;
 }

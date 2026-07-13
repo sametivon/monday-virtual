@@ -2,15 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Design tokens — light, precise, quiet (identity shared with the marketing
+   landing: warm paper, ink, violet). Two tiers:
+   1. Brandable (--brand-*): tenant white-label overrides these at runtime
+      (lib/branding.ts). Each color exists as hex AND as an RGB channel
+      triplet so Tailwind alpha modifiers (text-brand-text/60) actually work.
+   2. Fixed semantic (--ui-*): success/warning/danger + hairlines — the
+      product's own language, consistent across every tenant.
+   ───────────────────────────────────────────────────────────────────────── */
 :root {
-  /* Defaults; overridden at runtime from the tenant palette. */
+  /* Brandable (defaults; overridden at runtime from the tenant palette) */
   --brand-primary: #6c5ce7;
-  --brand-secondary: #00b894;
-  --brand-accent: #fdcb6e;
-  --brand-bg: #0f1115;
-  --brand-surface: #1a1d24;
-  --brand-text: #f5f6fa;
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --brand-primary-rgb: 108 92 231;
+  --brand-secondary: #0a9a6e;
+  --brand-secondary-rgb: 10 154 110;
+  --brand-accent: #e8a33d;
+  --brand-accent-rgb: 232 163 61;
+  --brand-bg: #faf7f2;
+  --brand-bg-rgb: 250 247 242;
+  --brand-surface: #ffffff;
+  --brand-surface-rgb: 255 255 255;
+  --brand-text: #211c29;
+  --brand-text-rgb: 33 28 41;
+
+  /* Fixed semantic (not white-labeled) */
+  --ui-success: #0a9a6e;
+  --ui-success-rgb: 10 154 110;
+  --ui-warning: #b0861f;
+  --ui-warning-rgb: 176 134 31;
+  --ui-danger: #c0392b;
+  --ui-danger-rgb: 192 57 43;
+  --ui-line-rgb: 33 28 41; /* hairlines at /8, /12 */
+  --ui-paper2: #f3eee6;
+
+  /* Serif display stack (headings) — zero-byte system stack, same as marketing */
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia,
+    serif;
 }
 
 html,
@@ -19,13 +47,45 @@ body {
   margin: 0;
   background: var(--brand-bg);
   color: var(--brand-text);
-  font-family: var(--font-sans);
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
   overflow: hidden; /* the 3D canvas owns the viewport */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 #__next,
 main {
   height: 100%;
+}
+
+/* Visible keyboard focus everywhere in the app. */
+:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Glass surfaces (the app's one panel recipe, from the landing) ───────── */
+@layer components {
+  .glass {
+    background: linear-gradient(165deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.58));
+    backdrop-filter: blur(12px) saturate(1.3);
+    -webkit-backdrop-filter: blur(12px) saturate(1.3);
+    border: 1px solid rgb(var(--ui-line-rgb) / 0.09);
+    box-shadow:
+      0 22px 44px -26px rgb(var(--ui-line-rgb) / 0.42),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+  /* For panels sitting over bright/busy 3D areas — more opaque, more legible. */
+  .glass-strong {
+    background: linear-gradient(165deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.74));
+    backdrop-filter: blur(14px) saturate(1.3);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    border: 1px solid rgb(var(--ui-line-rgb) / 0.1);
+    box-shadow:
+      0 22px 44px -26px rgb(var(--ui-line-rgb) / 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
 }
 
 /* Marketing pages need normal document scrolling + a light canvas, overriding

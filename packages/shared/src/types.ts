@@ -64,13 +64,38 @@ export interface AuthTokens {
 
 export const BrandingPaletteSchema = z.object({
   primary: z.string().default('#6c5ce7'),
-  secondary: z.string().default('#00b894'),
-  background: z.string().default('#0f1115'),
-  surface: z.string().default('#1a1d24'),
-  accent: z.string().default('#fdcb6e'),
-  text: z.string().default('#f5f6fa'),
+  secondary: z.string().default('#0a9a6e'),
+  background: z.string().default('#faf7f2'),
+  surface: z.string().default('#ffffff'),
+  accent: z.string().default('#e8a33d'),
+  text: z.string().default('#211c29'),
 });
 export type BrandingPalette = z.infer<typeof BrandingPaletteSchema>;
+
+/**
+ * The pre-light-theme default palette. Saving branding used to persist the
+ * FULL palette (schema parse fills defaults), so tenants who ever touched
+ * branding have these dark values stored verbatim. Remap them to the new
+ * light defaults at resolve time; deliberately-custom colors pass through.
+ */
+const LEGACY_PALETTE_REMAP: Record<string, string> = {
+  '#00b894': '#0a9a6e',
+  '#0f1115': '#faf7f2',
+  '#1a1d24': '#ffffff',
+  '#fdcb6e': '#e8a33d',
+  '#f5f6fa': '#211c29',
+};
+
+/** Parse a stored palette, migrating legacy dark defaults to the light theme. */
+export function normalizeBrandingPalette(stored: unknown): BrandingPalette {
+  const raw = (stored && typeof stored === 'object' ? stored : {}) as Record<string, unknown>;
+  const remapped: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    remapped[key] =
+      typeof value === 'string' ? (LEGACY_PALETTE_REMAP[value.toLowerCase()] ?? value) : value;
+  }
+  return BrandingPaletteSchema.parse(remapped);
+}
 
 export interface BrandingDTO {
   productName: string;

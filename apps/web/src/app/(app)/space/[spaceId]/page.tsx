@@ -12,7 +12,11 @@ import { useSpaceSocket } from '@/realtime/useSpaceSocket';
 import { EngineErrorBoundary } from '@/engine/EngineErrorBoundary';
 import { media } from '@/media/mediaController';
 import { useScreenShareTile } from '@/media/useScreenShare';
+import { AlertTriangle, ExternalLink, LogOut } from 'lucide-react';
+import { Button, Panel, Spinner } from '@/ui/primitives';
 import { ChatPanel } from '@/ui/ChatPanel';
+import { ConnectionBanner } from '@/ui/ConnectionBanner';
+import { WelcomeHint } from '@/ui/WelcomeHint';
 import { DashboardModal } from '@/ui/DashboardModal';
 import { EditorPanel } from '@/ui/EditorPanel';
 import { PresenceList } from '@/ui/PresenceList';
@@ -25,7 +29,7 @@ import type { SceneObjectDTO } from '@mvs/shared';
 // The 3D engine is browser-only (three.js); never SSR it.
 const SceneCanvas = dynamic(() => import('@/engine/SceneCanvas').then((m) => m.SceneCanvas), {
   ssr: false,
-  loading: () => <Overlay>Loading space…</Overlay>,
+  loading: () => <Overlay busy>Loading the space…</Overlay>,
 });
 
 export default function SpacePage({ params }: { params: Promise<{ spaceId: string }> }) {
@@ -112,9 +116,29 @@ export default function SpacePage({ params }: { params: Promise<{ spaceId: strin
     (window as unknown as { __interact?: (id: string) => void }).__interact = onInteract;
   }, [onInteract]);
 
-  if (status !== 'ready') return <Overlay>Connecting…</Overlay>;
-  if (error) return <Overlay>⚠️ {error}</Overlay>;
-  if (!manifest) return <Overlay>Loading world…</Overlay>;
+  if (status !== 'ready') return <Overlay busy>Connecting…</Overlay>;
+  if (error) {
+    return (
+      <Overlay>
+        <span className="grid h-11 w-11 place-items-center rounded-full bg-danger/10 text-danger">
+          <AlertTriangle size={20} strokeWidth={1.75} />
+        </span>
+        <p className="font-display text-lg text-brand-text">This space didn&rsquo;t load</p>
+        <p className="max-w-sm text-center text-sm text-brand-text/60">{error}</p>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => {
+            setError(null);
+            loadManifest();
+          }}
+        >
+          Try again
+        </Button>
+      </Overlay>
+    );
+  }
+  if (!manifest) return <Overlay busy>Preparing the world…</Overlay>;
 
   return (
     <div className="relative h-full w-full">
@@ -122,12 +146,14 @@ export default function SpacePage({ params }: { params: Promise<{ spaceId: strin
         <SceneCanvas manifest={manifest} onInteract={onInteract} />
       </EngineErrorBoundary>
       <Hud name={manifest.name} />
+      <ConnectionBanner />
+      <WelcomeHint />
       {liveShare && !screen && mainScreen && (
         <button
           onClick={() => setScreen(mainScreen)}
-          className="absolute left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-lg ring-2 ring-white/20 transition hover:brightness-110"
+          className="absolute left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-e2 transition hover:opacity-90"
         >
-          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-400" />
+          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-white/90" />
           {liveShare.local ? 'You’re presenting' : `${liveShare.participantName} is presenting`} · View
           fullscreen
         </button>
@@ -153,8 +179,18 @@ export default function SpacePage({ params }: { params: Promise<{ spaceId: strin
 
 function Hud({ name }: { name: string }) {
   const count = usePresenceStore((s) => Object.keys(s.players).length);
+  const productName = useSessionStore((s) => s.me?.tenant.branding.productName);
   const [inIframe, setInIframe] = useState(false);
   useEffect(() => setInIframe(window.self !== window.top), []);
+
+  // The tab reflects where you are — "Auditorium · Acme Office".
+  useEffect(() => {
+    const prev = document.title;
+    document.title = productName ? `${name} · ${productName}` : name;
+    return () => {
+      document.title = prev;
+    };
+  }, [name, productName]);
 
   // Hand the session to a full tab — the iframe can't get display-capture
   // permission, a top-level tab can. The token rides the URL fragment, NOT
@@ -169,33 +205,36 @@ function Hud({ name }: { name: string }) {
 
   return (
     <>
-      <div className="pointer-events-none absolute left-4 top-4 rounded-lg bg-black/40 px-4 py-2 backdrop-blur">
-        <div className="text-lg font-semibold">{name}</div>
-        <div className="text-xs text-white/60">{count + 1} present · WASD to move</div>
-      </div>
+      <Panel variant="glass-strong" padding="none" className="pointer-events-none absolute left-4 top-4 px-4 py-2.5">
+        <div className="font-display text-lg leading-tight text-brand-text">{name}</div>
+        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-brand-text/55">
+          <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
+          {count + 1} here now
+        </div>
+      </Panel>
       <div className="absolute right-4 top-4 flex gap-2">
         {inIframe && (
-          <button
-            onClick={popOut}
-            title="Open in its own tab (enables screen sharing)"
-            className="rounded-lg bg-brand-surface/80 px-3 py-2 text-sm backdrop-blur transition hover:bg-brand-primary"
-          >
-            ↗ Pop out
-          </button>
+          <Button variant="ghost" size="sm" icon={ExternalLink} onClick={popOut}>
+            Pop out
+          </Button>
         )}
         <Link
           href="/"
-          className="rounded-lg bg-brand-surface/80 px-3 py-2 text-sm backdrop-blur transition hover:bg-brand-primary"
+          className="inline-flex items-center gap-1.5 rounded-sm border border-line/15 bg-brand-surface/70 px-2.5 py-1.5 text-[13px] font-medium text-brand-text backdrop-blur transition hover:bg-brand-surface"
         >
-          ← Leave
+          <LogOut size={14} strokeWidth={1.75} aria-hidden="true" />
+          Leave
         </Link>
       </div>
     </>
   );
 }
 
-function Overlay({ children }: { children: React.ReactNode }) {
+function Overlay({ children, busy = false }: { children: React.ReactNode; busy?: boolean }) {
   return (
-    <div className="flex h-full items-center justify-center text-brand-text/70">{children}</div>
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-brand-text/70">
+      {busy && <Spinner size={22} />}
+      {typeof children === 'string' ? <p className="text-sm">{children}</p> : children}
+    </div>
   );
 }

@@ -2,6 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import {
+  CalendarDays,
+  CalendarOff,
+  Check,
+  Download,
+  Mic,
+  Pencil,
+  Play,
+  Plus,
+  Square,
+  Trash2,
+} from 'lucide-react';
+import {
   EventStatus,
   EventType,
   Permission,
@@ -10,12 +22,13 @@ import {
 } from '@mvs/shared';
 import { api } from '@/lib/api';
 import { useSessionStore } from '@/stores/sessionStore';
+import { Button, EmptyState, IconButton, Modal, Spinner, Tooltip } from '@/ui/primitives';
 
 const STATUS_STYLE: Record<string, string> = {
-  SCHEDULED: 'bg-white/10 text-white/70',
-  LIVE: 'bg-red-500/80 text-white',
-  ENDED: 'bg-white/5 text-white/40',
-  CANCELLED: 'bg-white/5 text-white/40',
+  SCHEDULED: 'bg-brand-primary/10 text-brand-primary',
+  LIVE: 'bg-danger text-white',
+  ENDED: 'bg-line/8 text-brand-text/55',
+  CANCELLED: 'bg-warning/10 text-warning',
 };
 
 /** Events launcher button → modal. Everyone sees events; admins author, presenters go live. */
@@ -26,12 +39,9 @@ export function EventsPanel() {
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="rounded-lg border border-white/10 bg-brand-surface px-4 py-2 text-sm transition hover:border-brand-primary"
-      >
-        📅 Events
-      </button>
+      <Button variant="ghost" icon={CalendarDays} onClick={() => setOpen(true)}>
+        Events
+      </Button>
     );
   }
   return <EventsModal onClose={() => setOpen(false)} />;
@@ -88,95 +98,124 @@ function EventsModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-white/10 bg-brand-surface"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-white/10 p-4">
-          <h2 className="text-lg font-semibold">📅 Events</h2>
-          <div className="flex items-center gap-2">
-            {canCreate && (
-              <button
-                onClick={() => setEditing('new')}
-                className="rounded-lg bg-brand-primary px-3 py-1.5 text-sm transition hover:opacity-90"
-              >
-                + New event
-              </button>
-            )}
-            <button onClick={onClose} className="text-white/60 hover:text-white">✕</button>
+    <Modal
+      title="Events"
+      size="md"
+      onClose={onClose}
+      headerExtra={
+        canCreate ? (
+          <Button variant="accent" size="sm" icon={Plus} onClick={() => setEditing('new')}>
+            New event
+          </Button>
+        ) : undefined
+      }
+    >
+      <div className="p-5">
+        {error && <p className="mb-3 text-sm text-danger">{error}</p>}
+        {events === null && (
+          <div className="flex justify-center py-12">
+            <Spinner size={20} />
           </div>
-        </div>
+        )}
+        {events?.length === 0 && (
+          <EmptyState
+            icon={CalendarOff}
+            title="No events scheduled"
+            body="Company events show up here — town halls, conferences, workshops."
+          />
+        )}
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {error && <p className="mb-3 text-sm text-red-400">⚠️ {error}</p>}
-          {events === null && <p className="py-10 text-center text-sm text-white/50">Loading…</p>}
-          {events?.length === 0 && <p className="py-10 text-center text-sm text-white/40">No events scheduled.</p>}
-
-          <div className="flex flex-col gap-3">
-            {events?.map((ev) => (
-              <div key={ev.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-semibold">{ev.title}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${STATUS_STYLE[ev.status]}`}>
-                        {ev.status}
-                      </span>
-                    </div>
-                    <div className="text-xs text-white/50">
-                      {ev.type} · {fmt(ev.startsAt)} · {ev.registeredCount} registered
-                    </div>
-                    {ev.speakers.length > 0 && (
-                      <div className="mt-1 text-xs text-white/40">
-                        🎤 {ev.speakers.map((s) => s.name).join(', ')}
-                      </div>
-                    )}
-                    {ev.agenda.length > 0 && (
-                      <ul className="mt-2 space-y-0.5 text-xs text-white/60">
-                        {ev.agenda.map((a, i) => (
-                          <li key={i}>
-                            • {new Date(a.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {a.title}
-                            {a.speaker ? ` (${a.speaker})` : ''}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+        <div className="flex flex-col gap-3">
+          {events?.map((ev) => (
+            <div key={ev.id} className="rounded-md border border-line/10 bg-brand-surface p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate font-medium text-brand-text">{ev.title}</span>
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STATUS_STYLE[ev.status]}`}
+                    >
+                      {ev.status === EventStatus.LIVE && (
+                        <span
+                          className="h-1.5 w-1.5 animate-pulse rounded-full bg-white"
+                          aria-hidden="true"
+                        />
+                      )}
+                      {ev.status}
+                    </span>
                   </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    {ev.status !== EventStatus.ENDED && ev.status !== EventStatus.CANCELLED && (
-                      <button
-                        disabled={busyId === ev.id}
-                        onClick={() => void act(ev.id, () => api.registerEvent(ev.id, !ev.registered))}
-                        className={`rounded-lg px-3 py-1 text-xs transition disabled:opacity-50 ${
-                          ev.registered ? 'bg-brand-primary' : 'bg-white/10 hover:bg-white/20'
-                        }`}
-                      >
-                        {ev.registered ? '✓ Registered' : 'Register'}
-                      </button>
-                    )}
-                    {ev.attended && <span className="text-[10px] text-emerald-400">attended</span>}
-                    {canPresent && ev.status !== EventStatus.ENDED && (
-                      <button
-                        disabled={busyId === ev.id}
-                        onClick={() => void act(ev.id, () => api.eventGoLive(ev.id, ev.status !== EventStatus.LIVE))}
-                        className={`rounded-lg px-3 py-1 text-xs transition disabled:opacity-50 ${
-                          ev.status === EventStatus.LIVE ? 'bg-red-500/80' : 'bg-emerald-600/70 hover:bg-emerald-600'
-                        }`}
-                      >
-                        {ev.status === EventStatus.LIVE ? '■ End' : '▶ Go live'}
-                      </button>
-                    )}
-                    {canManage && (
-                      <div className="flex gap-1">
-                        <button
+                  <div className="mt-0.5 text-xs text-brand-text/55">
+                    {ev.type} · {fmt(ev.startsAt)} · {ev.registeredCount} registered
+                  </div>
+                  {ev.speakers.length > 0 && (
+                    <div className="mt-1 inline-flex items-center gap-1.5 text-xs text-brand-text/55">
+                      <Mic size={12} strokeWidth={1.75} aria-hidden="true" />
+                      {ev.speakers.map((s) => s.name).join(', ')}
+                    </div>
+                  )}
+                  {ev.agenda.length > 0 && (
+                    <ul className="mt-2 space-y-0.5 text-xs text-brand-text/60">
+                      {ev.agenda.map((a, i) => (
+                        <li key={i}>
+                          {new Date(a.startsAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}{' '}
+                          — {a.title}
+                          {a.speaker ? ` (${a.speaker})` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  {ev.status !== EventStatus.ENDED && ev.status !== EventStatus.CANCELLED && (
+                    <Button
+                      variant={ev.registered ? 'accent' : 'ghost'}
+                      size="sm"
+                      icon={ev.registered ? Check : undefined}
+                      disabled={busyId === ev.id}
+                      onClick={() => void act(ev.id, () => api.registerEvent(ev.id, !ev.registered))}
+                    >
+                      {ev.registered ? 'Registered' : 'Register'}
+                    </Button>
+                  )}
+                  {ev.attended && (
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-success">
+                      Attended
+                    </span>
+                  )}
+                  {canPresent && ev.status !== EventStatus.ENDED && (
+                    <Button
+                      variant={ev.status === EventStatus.LIVE ? 'ghost' : 'accent'}
+                      size="sm"
+                      icon={ev.status === EventStatus.LIVE ? Square : Play}
+                      disabled={busyId === ev.id}
+                      onClick={() =>
+                        void act(ev.id, () => api.eventGoLive(ev.id, ev.status !== EventStatus.LIVE))
+                      }
+                    >
+                      {ev.status === EventStatus.LIVE ? 'End' : 'Go live'}
+                    </Button>
+                  )}
+                  {canManage && (
+                    <div className="flex items-center gap-0.5">
+                      <Tooltip label="Edit event">
+                        <IconButton
+                          icon={Pencil}
+                          aria-label="Edit event"
+                          variant="subtle"
+                          size="sm"
                           onClick={() => setEditing(ev)}
-                          className="rounded px-2 py-1 text-xs text-white/50 transition hover:text-white"
-                        >
-                          Edit
-                        </button>
-                        {ev.registeredCount > 0 && (
-                          <button
+                        />
+                      </Tooltip>
+                      {ev.registeredCount > 0 && (
+                        <Tooltip label="Download attendance CSV">
+                          <IconButton
+                            icon={Download}
+                            aria-label="Download attendance CSV"
+                            variant="subtle"
+                            size="sm"
                             disabled={busyId === ev.id}
                             onClick={() =>
                               void act(ev.id, async () => {
@@ -184,29 +223,29 @@ function EventsModal({ onClose }: { onClose: () => void }) {
                                 return { id: ev.id };
                               })
                             }
-                            title="Download attendance CSV"
-                            className="rounded px-2 py-1 text-xs text-white/50 transition hover:text-white"
-                          >
-                            ⬇ CSV
-                          </button>
-                        )}
-                        <button
+                          />
+                        </Tooltip>
+                      )}
+                      <Tooltip label="Delete event">
+                        <IconButton
+                          icon={Trash2}
+                          aria-label="Delete event"
+                          variant="subtle"
+                          size="sm"
+                          className="text-danger hover:text-danger"
                           disabled={busyId === ev.id}
                           onClick={() => void act(ev.id, () => api.deleteEvent(ev.id))}
-                          className="rounded px-2 py-1 text-xs text-red-400/70 transition hover:text-red-400"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                        />
+                      </Tooltip>
+                    </div>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -269,82 +308,75 @@ function EventEditor({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-white/10 bg-brand-surface"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-white/10 p-4">
-          <h2 className="text-lg font-semibold">{event ? 'Edit event' : 'New event'}</h2>
-          <button onClick={onClose} className="text-white/60 hover:text-white">✕</button>
-        </div>
-        <div className="flex-1 space-y-3 overflow-y-auto p-4 text-sm">
-          {error && <p className="text-red-400">⚠️ {error}</p>}
-          <Field label="Title">
-            <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} className={inputCls} />
+    <Modal title={event ? 'Edit event' : 'New event'} size="sm" onClose={onClose}>
+      <div className="space-y-3 p-5 text-sm">
+        {error && <p className="text-sm text-danger">{error}</p>}
+        <Field label="Title">
+          <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} className={inputCls} />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Type">
+            <select value={type} onChange={(e) => setType(e.target.value as EventType)} className={inputCls}>
+              {Object.values(EventType).map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
           </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Type">
-              <select value={type} onChange={(e) => setType(e.target.value as EventType)} className={inputCls}>
-                {Object.values(EventType).map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Space (auditorium)">
-              <select value={spaceId} onChange={(e) => setSpaceId(e.target.value)} className={inputCls}>
-                <option value="">(none)</option>
-                {spaces.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </Field>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Starts">
-              <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className={inputCls} />
-            </Field>
-            <Field label="Ends">
-              <input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} className={inputCls} />
-            </Field>
-          </div>
-          <Field label="Speakers (comma-separated)">
-            <input value={speakers} onChange={(e) => setSpeakers(e.target.value)} placeholder="Ada Lovelace, Alan Turing" className={inputCls} />
-          </Field>
-          <Field label="Agenda (one per line: ISO-time|minutes|title|speaker?)">
-            <textarea
-              value={agenda}
-              onChange={(e) => setAgenda(e.target.value)}
-              rows={4}
-              placeholder={`2026-06-20T15:00:00Z|30|Welcome|Ada\n2026-06-20T15:30:00Z|45|Keynote|Alan`}
-              className={`${inputCls} resize-none font-mono text-xs`}
-            />
+          <Field label="Space (auditorium)">
+            <select value={spaceId} onChange={(e) => setSpaceId(e.target.value)} className={inputCls}>
+              <option value="">(none)</option>
+              {spaces.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
           </Field>
         </div>
-        <div className="flex gap-2 border-t border-white/10 p-4">
-          <button
-            onClick={() => void save()}
-            disabled={saving || !title.trim()}
-            className="flex-1 rounded-lg bg-brand-primary py-2 font-semibold transition hover:opacity-90 disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Save event'}
-          </button>
-          <button onClick={onClose} className="rounded-lg bg-white/10 px-4 py-2 transition hover:bg-white/20">
-            Cancel
-          </button>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Starts">
+            <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className={inputCls} />
+          </Field>
+          <Field label="Ends">
+            <input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} className={inputCls} />
+          </Field>
         </div>
+        <Field label="Speakers (comma-separated)">
+          <input value={speakers} onChange={(e) => setSpeakers(e.target.value)} placeholder="Ada Lovelace, Alan Turing" className={inputCls} />
+        </Field>
+        <Field label="Agenda (one per line: ISO-time|minutes|title|speaker?)">
+          <textarea
+            value={agenda}
+            onChange={(e) => setAgenda(e.target.value)}
+            rows={4}
+            placeholder={`2026-06-20T15:00:00Z|30|Welcome|Ada\n2026-06-20T15:30:00Z|45|Keynote|Alan`}
+            className={`${inputCls} resize-none font-mono text-xs`}
+          />
+        </Field>
       </div>
-    </div>
+      <div className="flex gap-2 border-t border-line/8 p-4">
+        <Button
+          variant="accent"
+          className="flex-1"
+          loading={saving}
+          disabled={!title.trim()}
+          onClick={() => void save()}
+        >
+          Save event
+        </Button>
+        <Button variant="ghost" onClick={onClose}>
+          Cancel
+        </Button>
+      </div>
+    </Modal>
   );
 }
 
 const inputCls =
-  'w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 outline-none focus:border-brand-primary';
+  'w-full rounded-md border border-line/15 bg-brand-bg px-3 py-2 text-sm text-brand-text placeholder:text-brand-text/40 focus:border-brand-primary focus:outline-none';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs text-white/60">{label}</span>
+      <span className="mb-1 block text-xs text-brand-text/60">{label}</span>
       {children}
     </label>
   );

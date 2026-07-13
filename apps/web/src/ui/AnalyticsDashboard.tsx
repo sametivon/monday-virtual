@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { AlertTriangle, ChartNoAxesColumn } from 'lucide-react';
 import { Permission, type AnalyticsSummary, type HeatmapResponse } from '@mvs/shared';
 import { api } from '@/lib/api';
 import { useSessionStore } from '@/stores/sessionStore';
+import { Button, EmptyState, Modal, Spinner } from '@/ui/primitives';
 import { OccupancyHeatmap } from './OccupancyHeatmap';
 
 const RANGES = [
@@ -24,12 +26,9 @@ export function AnalyticsDashboard() {
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="rounded-lg border border-white/10 bg-brand-surface px-4 py-2 text-sm transition hover:border-brand-primary"
-      >
-        📈 Analytics
-      </button>
+      <Button variant="ghost" icon={ChartNoAxesColumn} onClick={() => setOpen(true)}>
+        Analytics
+      </Button>
     );
   }
   return <AnalyticsModal onClose={() => setOpen(false)} />;
@@ -66,114 +65,141 @@ function AnalyticsModal({ onClose }: { onClose: () => void }) {
   const maxUsers = Math.max(1, ...(data?.dailyActiveUsers.map((d) => d.users) ?? [1]));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-white/10 bg-brand-surface"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-white/10 p-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold">📈 Workspace analytics</h2>
-            <div className="flex gap-1 rounded-lg bg-white/5 p-1 text-xs">
-              {(['overview', 'heatmap'] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={`rounded-md px-2.5 py-1 capitalize transition ${
-                    tab === t ? 'bg-brand-primary' : 'text-white/60 hover:text-white'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex gap-1 rounded-lg bg-white/5 p-1 text-xs">
-              {RANGES.map((r) => (
-                <button
-                  key={r.days}
-                  onClick={() => setDays(r.days)}
-                  className={`rounded-md px-2.5 py-1 transition ${
-                    days === r.days ? 'bg-brand-primary' : 'text-white/60 hover:text-white'
-                  }`}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-            <button onClick={onClose} className="text-white/60 hover:text-white">✕</button>
-          </div>
+    <Modal
+      title="Workspace analytics"
+      size="lg"
+      onClose={onClose}
+      headerExtra={
+        <div className="flex items-center gap-2">
+          <Segmented
+            options={(['overview', 'heatmap'] as const).map((t) => ({ value: t, label: t }))}
+            value={tab}
+            onChange={setTab}
+            capitalize
+          />
+          <Segmented
+            options={RANGES.map((r) => ({ value: r.days, label: r.label }))}
+            value={days}
+            onChange={setDays}
+          />
         </div>
+      }
+    >
+      <div className="p-5">
+        {loading && (
+          <div className="flex justify-center py-14">
+            <Spinner size={22} />
+          </div>
+        )}
+        {error && !loading && (
+          <EmptyState icon={AlertTriangle} title="Couldn’t load analytics" body={error} />
+        )}
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {loading && <p className="py-10 text-center text-sm text-white/50">Loading…</p>}
-          {error && <p className="py-10 text-center text-sm text-red-400">⚠️ {error}</p>}
+        {tab === 'heatmap' && heatmap && !loading && !error && <OccupancyHeatmap data={heatmap} />}
 
-          {tab === 'heatmap' && heatmap && !loading && <OccupancyHeatmap data={heatmap} />}
+        {tab === 'overview' && data && !loading && !error && (
+          <>
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <Kpi label="Active users" value={data.totals.activeUsers} />
+              <Kpi label="Sessions" value={data.totals.sessions} />
+              <Kpi label="Avg session" value={`${data.totals.avgSessionMinutes}m`} />
+              <Kpi label="Messages" value={data.totals.messages} />
+              <Kpi label="Reactions" value={data.totals.reactions} />
+              <Kpi label="Hands raised" value={data.totals.handRaises} />
+            </div>
 
-          {tab === 'overview' && data && !loading && (
-            <>
-              <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <Kpi label="Active users" value={data.totals.activeUsers} />
-                <Kpi label="Sessions" value={data.totals.sessions} />
-                <Kpi label="Avg session" value={`${data.totals.avgSessionMinutes}m`} />
-                <Kpi label="Messages" value={data.totals.messages} />
-                <Kpi label="Reactions" value={data.totals.reactions} />
-                <Kpi label="Hands raised" value={data.totals.handRaises} />
-              </div>
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-brand-text/55">
+              Daily active users
+            </div>
+            <div className="mb-6 flex h-32 items-end gap-1">
+              {data.dailyActiveUsers.map((d) => (
+                <div
+                  key={d.date}
+                  className="flex h-full flex-1 items-end rounded-t-sm bg-line/8"
+                  title={`${d.date}: ${d.users}`}
+                >
+                  <div
+                    className="w-full rounded-t-sm bg-brand-primary/70"
+                    style={{ height: `${(d.users / maxUsers) * 100}%`, minHeight: d.users > 0 ? 2 : 0 }}
+                  />
+                </div>
+              ))}
+            </div>
 
-              <div className="mb-2 text-xs uppercase tracking-wide text-white/40">Daily active users</div>
-              <div className="mb-6 flex h-32 items-end gap-1 rounded-lg bg-white/5 p-2">
-                {data.dailyActiveUsers.map((d) => (
-                  <div key={d.date} className="group relative flex flex-1 flex-col items-center justify-end">
-                    <div
-                      className="w-full rounded-t bg-brand-primary/80"
-                      style={{ height: `${(d.users / maxUsers) * 100}%`, minHeight: d.users > 0 ? 2 : 0 }}
-                      title={`${d.date}: ${d.users}`}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div className="mb-2 text-xs uppercase tracking-wide text-white/40">By space</div>
-              {data.spaces.length === 0 ? (
-                <p className="py-6 text-center text-sm text-white/40">No activity yet in this window.</p>
-              ) : (
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-white/10 text-xs uppercase text-white/40">
-                      <th className="py-2 pr-3">Space</th>
-                      <th className="py-2 pr-3">Sessions</th>
-                      <th className="py-2 pr-3">Avg session</th>
-                      <th className="py-2 pr-3">Messages</th>
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-brand-text/55">
+              By space
+            </div>
+            {data.spaces.length === 0 ? (
+              <p className="py-6 text-center text-sm text-brand-text/55">
+                No activity yet in this window.
+              </p>
+            ) : (
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line/10 text-[11px] uppercase tracking-wide text-brand-text/55">
+                    <th className="py-2 pr-3 font-medium">Space</th>
+                    <th className="py-2 pr-3 font-medium">Sessions</th>
+                    <th className="py-2 pr-3 font-medium">Avg session</th>
+                    <th className="py-2 pr-3 font-medium">Messages</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.spaces.map((s) => (
+                    <tr key={s.spaceId} className="border-b border-line/8">
+                      <td className="py-2 pr-3 font-medium text-brand-text">{s.name}</td>
+                      <td className="py-2 pr-3 tabular-nums text-brand-text/75">{s.sessions}</td>
+                      <td className="py-2 pr-3 tabular-nums text-brand-text/75">{s.avgSessionMinutes}m</td>
+                      <td className="py-2 pr-3 tabular-nums text-brand-text/75">{s.messages}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {data.spaces.map((s) => (
-                      <tr key={s.spaceId} className="border-b border-white/5">
-                        <td className="py-2 pr-3 font-medium">{s.name}</td>
-                        <td className="py-2 pr-3 text-white/70">{s.sessions}</td>
-                        <td className="py-2 pr-3 text-white/70">{s.avgSessionMinutes}m</td>
-                        <td className="py-2 pr-3 text-white/70">{s.messages}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </>
-          )}
-        </div>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
+        )}
       </div>
+    </Modal>
+  );
+}
+
+/** Light segmented control: inset track, raised active segment. */
+function Segmented<T extends string | number>({
+  options,
+  value,
+  onChange,
+  capitalize = false,
+}: {
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  capitalize?: boolean;
+}) {
+  return (
+    <div className="flex gap-0.5 rounded-md bg-brand-bg p-0.5 text-xs">
+      {options.map((o) => (
+        <button
+          key={String(o.value)}
+          onClick={() => onChange(o.value)}
+          className={`rounded-sm px-2.5 py-1 font-medium transition ${capitalize ? 'capitalize' : ''} ${
+            value === o.value
+              ? 'bg-brand-surface text-brand-text shadow-e1'
+              : 'text-brand-text/60 hover:text-brand-text'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
 
 function Kpi({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-lg bg-white/5 px-4 py-3">
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-xs text-white/50">{label}</div>
+    <div className="rounded-md bg-brand-bg p-3">
+      <div className="font-display text-2xl tabular-nums text-brand-text">{value}</div>
+      <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-brand-text/55">
+        {label}
+      </div>
     </div>
   );
 }

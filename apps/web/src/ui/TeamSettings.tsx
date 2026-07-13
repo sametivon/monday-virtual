@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Download, RotateCcw, Trash2, Users } from 'lucide-react';
 import {
   Permission,
   RoleKey,
@@ -9,8 +10,12 @@ import {
 } from '@mvs/shared';
 import { api } from '@/lib/api';
 import { useSessionStore } from '@/stores/sessionStore';
+import { Button, IconButton, Modal, Spinner, Tooltip, toast } from '@/ui/primitives';
 
 const ROLE_OPTIONS = Object.values(RoleKey).filter((k) => k !== RoleKey.SUPER_ADMIN);
+
+const inputCls =
+  'rounded-md border border-line/15 bg-brand-bg px-3 py-2 text-sm text-brand-text placeholder:text-brand-text/40 focus:border-brand-primary focus:outline-none';
 
 /** Grouped permission catalog for the role editor (label + the catalog value). */
 const PERMISSION_GROUPS: { group: string; perms: { key: string; label: string }[] }[] = [
@@ -73,12 +78,9 @@ export function TeamSettings() {
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="rounded-lg border border-white/10 bg-brand-surface px-4 py-2 text-sm transition hover:border-brand-primary"
-      >
-        👥 Team & roles
-      </button>
+      <Button variant="ghost" icon={Users} onClick={() => setOpen(true)}>
+        Team &amp; roles
+      </Button>
     );
   }
   return <TeamModal onClose={() => setOpen(false)} />;
@@ -93,7 +95,6 @@ function TeamModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [erasing, setErasing] = useState<MemberDTO | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     void Promise.all([api.rbacMembers(), api.rbacRoles()])
@@ -134,7 +135,6 @@ function TeamModal({ onClose }: { onClose: () => void }) {
   const exportData = async (userId: string) => {
     setBusyId(userId);
     setError(null);
-    setNotice(null);
     try {
       await api.downloadGdprExport(userId);
     } catch (e) {
@@ -147,13 +147,12 @@ function TeamModal({ onClose }: { onClose: () => void }) {
   const confirmErase = async (member: MemberDTO) => {
     setBusyId(member.id);
     setError(null);
-    setNotice(null);
     try {
       const res = await api.eraseUser(member.id);
       // Drop the erased member from the roster (it's now an anonymized tombstone).
       setMembers((prev) => prev?.filter((m) => m.id !== member.id) ?? null);
       const r = res.removed;
-      setNotice(
+      toast.success(
         `Erased. Removed ${r.sessions} sessions, ${r.directMessages} DMs; anonymized ${r.chatMessagesAnonymized} messages, detached ${r.analyticsEventsDetached} analytics events.`,
       );
     } catch (e) {
@@ -178,95 +177,114 @@ function TeamModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-white/10 bg-brand-surface"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-white/10 p-4">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold">Team &amp; roles</h2>
-            <div className="ml-3 flex gap-1 rounded-lg bg-white/5 p-1 text-xs">
-              <Tab active={tab === 'members'} onClick={() => setTab('members')}>Members</Tab>
-              <Tab
-                active={tab === 'roles'}
-                onClick={() => setTab('roles')}
-                disabled={!canManageRoles}
-                title={canManageRoles ? undefined : 'Requires Manage roles'}
-              >
-                Roles
-              </Tab>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-white/60 hover:text-white">✕</button>
+    <Modal
+      title="Team & roles"
+      size="md"
+      onClose={onClose}
+      headerExtra={
+        <div className="flex gap-0.5 rounded-md bg-brand-bg p-0.5 text-xs">
+          <Tab active={tab === 'members'} onClick={() => setTab('members')}>
+            Members
+          </Tab>
+          <Tab
+            active={tab === 'roles'}
+            onClick={() => setTab('roles')}
+            disabled={!canManageRoles}
+            tooltip={canManageRoles ? undefined : 'Requires Manage roles'}
+          >
+            Roles
+          </Tab>
         </div>
+      }
+    >
+      <div className="p-5">
+        {error && <p className="mb-3 text-sm text-danger">{error}</p>}
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {error && <p className="mb-3 text-sm text-red-400">⚠️ {error}</p>}
-          {notice && <p className="mb-3 text-sm text-emerald-400">✓ {notice}</p>}
+        {tab === 'members' && members === null && !error && (
+          <div className="flex justify-center py-12">
+            <Spinner size={20} />
+          </div>
+        )}
 
-          {tab === 'members' && (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 text-xs uppercase text-white/40">
-                  <th className="py-2 pr-3">Member</th>
-                  <th className="py-2 pr-3">Role</th>
-                  <th className="py-2 pr-3">Data</th>
-                </tr>
-              </thead>
-              <tbody>
-                {members?.map((m) => (
-                  <tr key={m.id} className="border-b border-white/5">
-                    <td className="py-2 pr-3">
-                      <div className="font-medium">{m.name}</div>
-                      <div className="text-xs text-white/40">{m.email}</div>
-                    </td>
-                    <td className="py-2 pr-3">
+        {tab === 'members' && members !== null && (
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-line/10 text-[11px] uppercase tracking-wide text-brand-text/55">
+                <th className="py-2 pr-3 font-medium">Member</th>
+                <th className="py-2 pr-3 font-medium">Role</th>
+                <th className="py-2 pr-3 font-medium">Data</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m) => (
+                <tr key={m.id} className="border-b border-line/8">
+                  <td className="py-2.5 pr-3">
+                    <div className="font-medium text-brand-text">{m.name}</div>
+                    <div className="text-xs text-brand-text/55">{m.email}</div>
+                  </td>
+                  <td className="py-2.5 pr-3">
+                    <Tooltip
+                      label={m.id === me?.user.id ? "You can't change your own role" : 'Change role'}
+                    >
                       <select
                         value={m.roleKey}
                         disabled={busyId === m.id || m.id === me?.user.id}
-                        title={m.id === me?.user.id ? "You can't change your own role" : undefined}
                         onChange={(e) => void assign(m.id, e.target.value as RoleKey)}
-                        className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-sm outline-none focus:border-brand-primary disabled:opacity-50"
+                        className={`${inputCls} px-2 py-1 disabled:opacity-50`}
                       >
                         {ROLE_OPTIONS.map((r) => (
                           <option key={r} value={r}>{r}</option>
                         ))}
                       </select>
-                    </td>
-                    <td className="py-2 pr-3">
-                      <div className="flex gap-1">
-                        <button
+                    </Tooltip>
+                  </td>
+                  <td className="py-2.5 pr-3">
+                    <div className="flex items-center gap-0.5">
+                      <Tooltip label="Download this member's data (GDPR export)">
+                        <IconButton
+                          icon={Download}
+                          aria-label="Download this member's data (GDPR export)"
+                          variant="subtle"
+                          size="sm"
                           disabled={busyId === m.id}
                           onClick={() => void exportData(m.id)}
-                          title="Download this member's data (GDPR export)"
-                          className="rounded px-2 py-1 text-xs text-white/50 transition hover:text-white disabled:opacity-50"
-                        >
-                          ⬇ Export
-                        </button>
-                        <button
+                        />
+                      </Tooltip>
+                      <Tooltip
+                        label={
+                          m.id === me?.user.id
+                            ? "You can't erase yourself"
+                            : 'Erase (right to be forgotten)'
+                        }
+                      >
+                        <IconButton
+                          icon={Trash2}
+                          aria-label="Erase member (right to be forgotten)"
+                          variant="subtle"
+                          size="sm"
+                          className="text-danger hover:text-danger disabled:opacity-30"
                           disabled={busyId === m.id || m.id === me?.user.id}
                           onClick={() => setErasing(m)}
-                          title={m.id === me?.user.id ? "You can't erase yourself" : 'Erase (right to be forgotten)'}
-                          className="rounded px-2 py-1 text-xs text-red-400/70 transition hover:text-red-400 disabled:opacity-30"
-                        >
-                          Erase
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {members?.length === 0 && (
-                  <tr><td colSpan={3} className="py-6 text-center text-white/40">No members yet.</td></tr>
-                )}
-              </tbody>
-            </table>
-          )}
+                        />
+                      </Tooltip>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {members.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="py-6 text-center text-brand-text/55">
+                    No members yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
 
-          {tab === 'roles' && canManageRoles && (
-            <RoleEditor roles={roles} busyId={busyId} onToggle={togglePerm} onReset={resetRole} />
-          )}
-        </div>
+        {tab === 'roles' && canManageRoles && (
+          <RoleEditor roles={roles} busyId={busyId} onToggle={togglePerm} onReset={resetRole} />
+        )}
       </div>
 
       {erasing && (
@@ -277,7 +295,7 @@ function TeamModal({ onClose }: { onClose: () => void }) {
           onConfirm={() => void confirmErase(erasing)}
         />
       )}
-    </div>
+    </Modal>
   );
 }
 
@@ -296,39 +314,41 @@ function EraseConfirm({
   const [typed, setTyped] = useState('');
   const armed = typed.trim() === member.name.trim();
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={onCancel}>
-      <div
-        className="w-full max-w-md rounded-2xl border border-red-500/30 bg-brand-surface p-5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="text-base font-semibold text-red-400">Erase {member.name}?</h3>
-        <p className="mt-2 text-sm text-white/60">
+    <Modal
+      title={<span className="text-danger">Erase {member.name}?</span>}
+      size="sm"
+      onClose={onCancel}
+    >
+      <div className="p-5">
+        <p className="text-sm text-brand-text/60">
           This permanently anonymizes the member and deletes their sessions and direct messages.
           Aggregate analytics are kept but detached from their identity. This cannot be undone.
         </p>
-        <p className="mt-3 text-xs text-white/50">
-          Type <span className="font-semibold text-white/80">{member.name}</span> to confirm:
+        <p className="mt-3 text-xs text-brand-text/55">
+          Type <span className="font-semibold text-brand-text/75">{member.name}</span> to confirm:
         </p>
         <input
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           autoFocus
-          className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-red-500"
+          className={`mt-1.5 w-full ${inputCls}`}
         />
         <div className="mt-4 flex gap-2">
-          <button
-            disabled={!armed || busy}
+          <Button
+            variant="danger"
+            className="flex-1"
+            disabled={!armed}
+            loading={busy}
             onClick={onConfirm}
-            className="flex-1 rounded-lg bg-red-600/80 py-2 text-sm font-semibold transition hover:bg-red-600 disabled:opacity-40"
           >
-            {busy ? 'Erasing…' : 'Erase permanently'}
-          </button>
-          <button onClick={onCancel} className="rounded-lg bg-white/10 px-4 py-2 text-sm transition hover:bg-white/20">
+            Erase permanently
+          </Button>
+          <Button variant="ghost" onClick={onCancel}>
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -346,7 +366,7 @@ function RoleEditor({
   const editable = (roles ?? []).filter((r) => r.key !== RoleKey.SUPER_ADMIN);
   const [activeKey, setActiveKey] = useState<RoleKey>(RoleKey.MEMBER);
   const role = editable.find((r) => r.key === activeKey) ?? editable[0];
-  if (!role) return <p className="text-sm text-white/40">No roles.</p>;
+  if (!role) return <p className="text-sm text-brand-text/55">No roles.</p>;
 
   return (
     <div>
@@ -355,8 +375,10 @@ function RoleEditor({
           <button
             key={r.id}
             onClick={() => setActiveKey(r.key)}
-            className={`rounded-lg px-3 py-1 text-xs transition ${
-              role.id === r.id ? 'bg-brand-primary' : 'bg-white/10 hover:bg-white/20'
+            className={`rounded-sm px-3 py-1 text-xs font-medium transition ${
+              role.id === r.id
+                ? 'bg-brand-primary text-white shadow-e1'
+                : 'bg-line/8 text-brand-text/70 hover:bg-line/12 hover:text-brand-text'
             }`}
           >
             {r.key}
@@ -365,32 +387,37 @@ function RoleEditor({
       </div>
 
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm text-white/60">{role.permissions.length} permissions</span>
-        <button
-          onClick={() => onReset(role)}
+        <span className="text-sm text-brand-text/60">{role.permissions.length} permissions</span>
+        <Button
+          variant="subtle"
+          size="sm"
+          icon={RotateCcw}
           disabled={busyId === role.id}
-          className="rounded-lg bg-white/10 px-3 py-1 text-xs transition hover:bg-white/20 disabled:opacity-50"
+          onClick={() => onReset(role)}
         >
           Reset to defaults
-        </button>
+        </Button>
       </div>
 
       {PERMISSION_GROUPS.map((g) => (
         <div key={g.group} className="mb-4">
-          <div className="mb-1 text-xs uppercase tracking-wide text-white/40">{g.group}</div>
+          <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-brand-text/55">
+            {g.group}
+          </div>
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
             {g.perms.map((p) => {
               const on = role.permissions.includes(p.key);
               return (
                 <label
                   key={p.key}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5 text-sm"
+                  className="flex cursor-pointer items-center gap-2 rounded-sm bg-brand-bg px-3 py-1.5 text-sm text-brand-text"
                 >
                   <input
                     type="checkbox"
                     checked={on}
                     disabled={busyId === role.id}
                     onChange={(e) => onToggle(role, p.key, e.target.checked)}
+                    style={{ accentColor: 'var(--brand-primary)' }}
                   />
                   {p.label}
                 </label>
@@ -407,25 +434,27 @@ function Tab({
   active,
   onClick,
   disabled,
-  title,
+  tooltip,
   children,
 }: {
   active: boolean;
   onClick: () => void;
   disabled?: boolean;
-  title?: string;
+  tooltip?: string;
   children: React.ReactNode;
 }) {
-  return (
+  const btn = (
     <button
       onClick={onClick}
       disabled={disabled}
-      title={title}
-      className={`rounded-md px-3 py-1 transition ${
-        active ? 'bg-brand-primary' : 'text-white/60 hover:text-white'
+      className={`rounded-sm px-3 py-1 font-medium transition ${
+        active
+          ? 'bg-brand-surface text-brand-text shadow-e1'
+          : 'text-brand-text/60 hover:text-brand-text'
       } disabled:opacity-40`}
     >
       {children}
     </button>
   );
+  return tooltip ? <Tooltip label={tooltip}>{btn}</Tooltip> : btn;
 }

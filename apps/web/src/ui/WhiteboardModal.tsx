@@ -1,11 +1,27 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ArrowUpRight,
+  Circle,
+  Eraser,
+  PaintBucket,
+  Pen,
+  Slash,
+  Square,
+  StickyNote,
+  Trash2,
+  Type,
+  Undo2,
+  type LucideIcon,
+} from 'lucide-react';
 import type { SceneObjectDTO, WhiteboardDrawOp } from '@mvs/shared';
 import { sendWhiteboardOp } from '@/realtime/useSpaceSocket';
 import { hitTest, materialize, useWhiteboardStore } from '@/stores/whiteboardStore';
 import { drawBoard, drawShape } from '@/whiteboard/draw';
+import { IconButton, Modal, Tooltip } from '@/ui/primitives';
 
+// Ink/sticky palettes are CONTENT colors (what people draw with), not UI theme.
 const PEN_COLORS = ['#2d3436', '#d63031', '#0984e3', '#00b894', '#e17055', '#6c5ce7'];
 const STICKY_COLORS = ['#ffeaa7', '#fab1a0', '#a7e9ff', '#b8f7c8'];
 const SIZES: { label: string; value: number }[] = [
@@ -21,10 +37,20 @@ const H = 1000;
 type Tool = 'pen' | 'sticky' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'text' | 'eraser';
 type ShapeKind = 'rect' | 'ellipse' | 'line' | 'arrow';
 const SHAPE_TOOLS: ShapeKind[] = ['rect', 'ellipse', 'line', 'arrow'];
-const SHAPE_ICON: Record<ShapeKind, string> = { rect: '▭', ellipse: '◯', line: '╱', arrow: '↗' };
 const isShapeTool = (t: Tool): t is ShapeKind => (SHAPE_TOOLS as string[]).includes(t);
 /** Default font size (relative to board width) for the text tool. */
 const TEXT_SIZE = 0.028;
+
+const TOOL_DEFS: { tool: Tool; icon: LucideIcon; label: string }[] = [
+  { tool: 'pen', icon: Pen, label: 'Pen' },
+  { tool: 'rect', icon: Square, label: 'Rectangle' },
+  { tool: 'ellipse', icon: Circle, label: 'Ellipse' },
+  { tool: 'line', icon: Slash, label: 'Line' },
+  { tool: 'arrow', icon: ArrowUpRight, label: 'Arrow' },
+  { tool: 'text', icon: Type, label: 'Text' },
+  { tool: 'sticky', icon: StickyNote, label: 'Sticky note' },
+  { tool: 'eraser', icon: Eraser, label: 'Eraser' },
+];
 
 /**
  * Collaborative whiteboard (Phase 2): freehand strokes + sticky notes, synced
@@ -213,90 +239,127 @@ export function WhiteboardModal({ object, onClose }: { object: SceneObjectDTO; o
 
   const clear = () => commit({ kind: 'clear', id: crypto.randomUUID() });
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className="flex max-h-[92vh] w-full max-w-4xl flex-col rounded-2xl border border-white/10 bg-brand-surface"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-          <h2 className="text-lg font-semibold">🖊️ {label}</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <ToolButton active={tool === 'pen'} onClick={() => setTool('pen')}>✏️ Pen</ToolButton>
-            {SHAPE_TOOLS.map((s) => (
-              <ToolButton key={s} active={tool === s} onClick={() => setTool(s)} title={s}>
-                {SHAPE_ICON[s]}
-              </ToolButton>
-            ))}
-            <ToolButton active={tool === 'text'} onClick={() => setTool('text')}>🔤 Text</ToolButton>
-            <ToolButton active={tool === 'sticky'} onClick={() => setTool('sticky')}>🗒️ Sticky</ToolButton>
-            <ToolButton active={tool === 'eraser'} onClick={() => setTool('eraser')}>🧽 Erase</ToolButton>
-            <div className="mx-1 h-5 w-px bg-white/15" />
-            {PEN_COLORS.map((c) => (
-              <button
-                key={c}
-                onClick={() => setColor(c)}
-                style={{ backgroundColor: c }}
-                className={`h-6 w-6 rounded-full ${color === c ? 'ring-2 ring-white' : 'opacity-70 hover:opacity-100'}`}
-              />
-            ))}
-            <div className="mx-1 h-5 w-px bg-white/15" />
-            {SIZES.map((s) => (
-              <ToolButton key={s.label} active={size === s.value} onClick={() => setSize(s.value)}>
-                {s.label}
-              </ToolButton>
-            ))}
-            {isShapeTool(tool) && (tool === 'rect' || tool === 'ellipse') && (
-              <ToolButton active={filled} onClick={() => setFilled((f) => !f)} title="Fill shape">
-                {filled ? '▰ Filled' : '▱ Outline'}
-              </ToolButton>
-            )}
-            <div className="mx-1 h-5 w-px bg-white/15" />
-            <ToolButton onClick={undo}>↩ Undo</ToolButton>
-            <ToolButton onClick={clear}>🗑 Clear</ToolButton>
-            <button onClick={onClose} className="ml-2 text-white/60 hover:text-white">✕</button>
-          </div>
-        </div>
+  // The Modal owns Escape/backdrop/✕. When a sticky/text draft is open, a
+  // close request cancels the draft first (matching the old behavior where
+  // Escape only dismissed the editor) — a second request closes the board.
+  const handleClose = useCallback(() => {
+    if (stickyDraft) {
+      setStickyDraft(null);
+      return;
+    }
+    if (textDraft) {
+      setTextDraft(null);
+      return;
+    }
+    onClose();
+  }, [stickyDraft, textDraft, onClose]);
 
-        <div className="relative min-h-0 flex-1 p-3">
-          <canvas
-            ref={canvasRef}
-            width={W}
-            height={H}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerLeave={onPointerUp}
-            className={`w-full rounded-lg ${
-              tool === 'eraser'
-                ? 'cursor-cell'
-                : tool === 'sticky' || tool === 'text'
-                  ? 'cursor-copy'
-                  : 'cursor-crosshair'
+  return (
+    <Modal size="lg" title={label} onClose={handleClose}>
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-line/8 px-4 py-2">
+        {TOOL_DEFS.map(({ tool: t, icon, label: toolLabel }) => (
+          <Tooltip key={t} label={toolLabel}>
+            <IconButton
+              icon={icon}
+              aria-label={toolLabel}
+              size="sm"
+              active={tool === t}
+              onClick={() => setTool(t)}
+            />
+          </Tooltip>
+        ))}
+        <ToolbarDivider />
+        {PEN_COLORS.map((c) => (
+          <button
+            key={c}
+            onClick={() => setColor(c)}
+            aria-label={`Ink color ${c}`}
+            aria-pressed={color === c}
+            style={{ backgroundColor: c }}
+            className={`h-6 w-6 rounded-full transition ${
+              color === c ? 'ring-2 ring-brand-primary ring-offset-1' : 'opacity-70 hover:opacity-100'
             }`}
-            style={{ aspectRatio: `${W} / ${H}`, touchAction: 'none' }}
           />
-          {stickyDraft && (
-            <StickyEditor
-              x={stickyDraft.x}
-              y={stickyDraft.y}
-              onCommit={placeSticky}
-              onCancel={() => setStickyDraft(null)}
-            />
-          )}
-          {textDraft && (
-            <TextEditor
-              x={textDraft.x}
-              y={textDraft.y}
-              color={color}
-              onCommit={placeText}
-              onCancel={() => setTextDraft(null)}
-            />
-          )}
+        ))}
+        <ToolbarDivider />
+        <div className="flex gap-0.5 rounded-sm bg-line/8 p-0.5 text-xs">
+          {SIZES.map((s) => (
+            <button
+              key={s.label}
+              onClick={() => setSize(s.value)}
+              className={`rounded-sm px-2 py-0.5 font-medium transition ${
+                size === s.value
+                  ? 'bg-brand-primary text-white shadow-e1'
+                  : 'text-brand-text/60 hover:text-brand-text'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
+        {isShapeTool(tool) && (tool === 'rect' || tool === 'ellipse') && (
+          <Tooltip label={filled ? 'Filled — switch to outline' : 'Outline — switch to filled'}>
+            <IconButton
+              icon={PaintBucket}
+              aria-label="Toggle shape fill"
+              size="sm"
+              active={filled}
+              onClick={() => setFilled((f) => !f)}
+            />
+          </Tooltip>
+        )}
+        <ToolbarDivider />
+        <Tooltip label="Undo my last action">
+          <IconButton icon={Undo2} aria-label="Undo my last action" size="sm" onClick={undo} />
+        </Tooltip>
+        <Tooltip label="Clear the board">
+          <IconButton icon={Trash2} aria-label="Clear the board" size="sm" onClick={clear} />
+        </Tooltip>
       </div>
-    </div>
+
+      <div className="relative bg-brand-bg p-3">
+        {/* The board itself stays white — a whiteboard IS white (drawBoard paints it). */}
+        <canvas
+          ref={canvasRef}
+          width={W}
+          height={H}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerLeave={onPointerUp}
+          className={`w-full rounded-md border border-line/10 bg-white shadow-e1 ${
+            tool === 'eraser'
+              ? 'cursor-cell'
+              : tool === 'sticky' || tool === 'text'
+                ? 'cursor-copy'
+                : 'cursor-crosshair'
+          }`}
+          style={{ aspectRatio: `${W} / ${H}`, touchAction: 'none' }}
+        />
+        {stickyDraft && (
+          <StickyEditor
+            x={stickyDraft.x}
+            y={stickyDraft.y}
+            onCommit={placeSticky}
+            onCancel={() => setStickyDraft(null)}
+          />
+        )}
+        {textDraft && (
+          <TextEditor
+            x={textDraft.x}
+            y={textDraft.y}
+            color={color}
+            onCommit={placeText}
+            onCancel={() => setTextDraft(null)}
+          />
+        )}
+      </div>
+    </Modal>
   );
+}
+
+function ToolbarDivider() {
+  return <span className="mx-1 h-5 w-px shrink-0 bg-line/12" aria-hidden="true" />;
 }
 
 function StickyEditor({
@@ -317,7 +380,7 @@ function StickyEditor({
   useEffect(() => ref.current?.focus(), []);
   return (
     <div
-      className="absolute z-10 rounded-md bg-[#ffeaa7] p-2 shadow-lg"
+      className="absolute z-10 rounded-md bg-[#ffeaa7] p-2 shadow-e2"
       style={{ left: `calc(${x * 100}% )`, top: `calc(${y * 100}%)` }}
     >
       <textarea
@@ -372,31 +435,7 @@ function TextEditor({
       }}
       placeholder="Type, Enter to add"
       style={{ left: `${x * 100}%`, top: `${y * 100}%`, color }}
-      className="absolute z-10 h-16 w-56 resize-none rounded border border-white/30 bg-white/90 px-1 text-lg font-semibold outline-none placeholder:text-black/30"
+      className="absolute z-10 h-16 w-56 resize-none rounded-sm border border-line/15 bg-white/95 px-1 text-lg font-semibold shadow-e1 outline-none placeholder:text-brand-text/30"
     />
-  );
-}
-
-function ToolButton({
-  active,
-  onClick,
-  title,
-  children,
-}: {
-  active?: boolean;
-  onClick: () => void;
-  title?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      className={`rounded-lg px-2.5 py-1 text-sm transition ${
-        active ? 'bg-brand-primary' : 'bg-white/10 hover:bg-white/20'
-      }`}
-    >
-      {children}
-    </button>
   );
 }

@@ -1,6 +1,7 @@
 import { Body, Controller, Patch } from '@nestjs/common';
 import {
   BrandingPaletteSchema,
+  normalizeBrandingPalette,
   BrandingUpdateSchema,
   Permission,
   PlanFeature,
@@ -29,8 +30,10 @@ export class TenantController {
       .forTenant(principal.tenantId)
       .branding.findFirst({ where: { tenantId: principal.tenantId } });
 
+    // Normalize the stored base first so legacy dark-default values migrate
+    // to the light theme on the next save; explicit updates win.
     const palette = BrandingPaletteSchema.parse({
-      ...((existing?.palette as object) ?? {}),
+      ...normalizeBrandingPalette(existing?.palette),
       ...(update.palette ?? {}),
     });
     const data = {

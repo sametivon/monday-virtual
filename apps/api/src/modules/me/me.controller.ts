@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Patch } from '@nestjs/common';
 import {
   AvatarConfigSchema,
-  BrandingPaletteSchema,
+  normalizeBrandingPalette,
   DEFAULT_ROLE_PERMISSIONS,
   RoleKey,
   type AvatarConfig,
@@ -61,7 +61,7 @@ export class MeController {
         branding: {
           productName: tenant.branding?.productName ?? 'Virtual Spaces',
           logoUrl: tenant.branding?.logoUrl ?? null,
-          palette: BrandingPaletteSchema.parse(tenant.branding?.palette ?? {}),
+          palette: normalizeBrandingPalette(tenant.branding?.palette),
           theme: (tenant.branding?.theme as Record<string, unknown> | null) ?? null,
         },
       },

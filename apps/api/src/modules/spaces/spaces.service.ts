@@ -5,6 +5,7 @@ import {
   ObjectType,
   SceneConfigSchema,
   SceneObjectSchema,
+  normalizeBrandingPalette,
   TransformSchema,
   WorldManifestSchema,
   type ObjectConfig,
@@ -283,7 +284,7 @@ export class SpacesService {
     const branding = await this.prisma
       .forTenant(tenantId)
       .branding.findFirst({ where: { tenantId } });
-    const accent = (branding?.palette as { accent?: string } | null)?.accent;
+    const accent = normalizeBrandingPalette(branding?.palette).accent;
     if (accent) interior.accentColor = accent;
   }
 

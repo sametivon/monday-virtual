@@ -10,8 +10,10 @@ import {
   type WhiteboardDrawOp,
 } from '@mvs/shared';
 import { env } from '@/lib/env';
+import { toast } from '@/ui/primitives';
 import { api } from '@/lib/api';
 import { useChatStore } from '@/stores/chatStore';
+import { useConnectionStore } from '@/stores/connectionStore';
 import { usePlayerStore } from '@/stores/playerStore';
 import { usePresenceStore } from '@/stores/presenceStore';
 import { useEditorStore } from '@/stores/editorStore';
@@ -100,6 +102,27 @@ export function useSpaceSocket(spaceId: string) {
 
     activeSocket = socket;
 
+    // ── Connection lifecycle → connectionStore (drives the reconnect banner).
+    const conn = useConnectionStore.getState().set;
+    socket.on('connect', () => {
+      const wasReconnecting = useConnectionStore.getState().status === 'reconnecting';
+      conn({ status: 'connected', attempt: 0, serverRestarting: false });
+      if (wasReconnecting) toast.success('Back online');
+    });
+    socket.on('disconnect', () => {
+      conn({ status: 'reconnecting' });
+      // Presence is stale the moment we drop; the server sends a full
+      // presence:sync on reconnect, so clearing here prevents ghost avatars.
+      usePresenceStore.getState().clear();
+    });
+    socket.io.on('reconnect_attempt', (attempt) => conn({ status: 'reconnecting', attempt }));
+    socket.io.on('reconnect_failed', () => conn({ status: 'offline' }));
+    socket.on('connect_error', () => {
+      if (useConnectionStore.getState().status === 'connecting') {
+        conn({ status: 'reconnecting' });
+      }
+    });
+
     socket.on('presence:sync', sync);
     socket.on('player:joined', upsert);
     socket.on('players:tick', applyTick);
@@ -144,6 +167,7 @@ export function useSpaceSocket(spaceId: string) {
       clearInterval(interval);
       if (activeSocket === socket) activeSocket = null;
       socket.disconnect();
+      useConnectionStore.getState().set({ status: 'connecting', attempt: 0, serverRestarting: false });
       clear();
       useChatStore.getState().reset();
       useSlideStore.getState().reset();

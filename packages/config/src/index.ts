@@ -10,6 +10,7 @@
 import {
   BrandingPalette,
   BrandingPaletteSchema,
+  normalizeBrandingPalette,
   ObjectType,
   SceneConfig,
   SceneConfigSchema,
@@ -325,9 +326,9 @@ export function validateSceneConfig(input: unknown): SceneConfig {
   return SceneConfigSchema.parse(input);
 }
 
-/** Merge a tenant's stored palette over defaults. */
+/** Merge a tenant's stored palette over defaults (legacy dark values remapped). */
 export function resolvePalette(stored: unknown): BrandingPalette {
-  return BrandingPaletteSchema.parse({ ...DEFAULT_PALETTE, ...(stored as object) });
+  return normalizeBrandingPalette(stored);
 }
 
 export { SceneConfigSchema, BrandingPaletteSchema };

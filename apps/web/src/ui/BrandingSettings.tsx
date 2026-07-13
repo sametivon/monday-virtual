@@ -1,10 +1,12 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { Palette, RotateCcw, Upload, X } from 'lucide-react';
 import { Permission, UploadKind, type BrandingPalette } from '@mvs/shared';
 import { api } from '@/lib/api';
 import { applyBranding } from '@/lib/branding';
 import { useSessionStore } from '@/stores/sessionStore';
+import { Button, Modal } from '@/ui/primitives';
 
 const PALETTE_FIELDS: { key: keyof BrandingPalette; label: string }[] = [
   { key: 'primary', label: 'Primary' },
@@ -14,6 +16,19 @@ const PALETTE_FIELDS: { key: keyof BrandingPalette; label: string }[] = [
   { key: 'surface', label: 'Surface' },
   { key: 'text', label: 'Text' },
 ];
+
+/** The product's own default palette (matches the :root tokens in globals.css). */
+const DEFAULT_PALETTE: BrandingPalette = {
+  primary: '#6c5ce7',
+  secondary: '#0a9a6e',
+  background: '#faf7f2',
+  surface: '#ffffff',
+  accent: '#e8a33d',
+  text: '#211c29',
+};
+
+const inputCls =
+  'w-full rounded-md border border-line/15 bg-brand-bg px-3 py-2 text-sm text-brand-text placeholder:text-brand-text/40 focus:border-brand-primary focus:outline-none';
 
 /**
  * White-label editor (admins with branding:edit): product name + palette,
@@ -66,6 +81,12 @@ export function BrandingSettings() {
     preview(next, name);
   };
 
+  const resetToDefaults = () => {
+    const next = { ...DEFAULT_PALETTE };
+    setPalette(next);
+    preview(next, name);
+  };
+
   const cancel = () => {
     applyBranding(saved); // roll back the live preview
     setOpen(false);
@@ -90,44 +111,30 @@ export function BrandingSettings() {
 
   if (!open) {
     return (
-      <button
-        onClick={openEditor}
-        className="rounded-lg border border-white/10 bg-brand-surface px-4 py-2 text-sm transition hover:border-brand-primary"
-      >
-        🎨 Branding
-      </button>
+      <Button variant="ghost" icon={Palette} onClick={openEditor}>
+        Branding
+      </Button>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-brand-surface p-6 text-left">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Workspace branding</h2>
-          <button onClick={cancel} className="text-white/60 hover:text-white">✕</button>
-        </div>
+    <Modal title="Branding" size="sm" onClose={cancel}>
+      <div className="p-5">
+        <label className="block">
+          <span className="mb-1 block text-xs text-brand-text/60">Product name</span>
+          <input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (palette) preview(palette, e.target.value);
+            }}
+            maxLength={60}
+            className={inputCls}
+          />
+        </label>
 
-        <label className="mb-1 block text-sm text-white/60">Product name</label>
-        <input
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            if (palette) preview(palette, e.target.value);
-          }}
-          maxLength={60}
-          className="mb-4 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 outline-none focus:border-brand-primary"
-        />
-
-        <label className="mb-1 block text-sm text-white/60">Logo</label>
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/30">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
-            ) : (
-              <span className="text-xs text-white/30">none</span>
-            )}
-          </div>
+        <div className="mt-4">
+          <span className="mb-1 block text-xs text-brand-text/60">Logo</span>
           <input
             ref={fileRef}
             type="file"
@@ -136,55 +143,74 @@ export function BrandingSettings() {
             onChange={(e) => void onLogoPicked(e.target.files?.[0] ?? undefined)}
           />
           <button
+            type="button"
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            className="rounded-lg bg-white/10 px-3 py-2 text-sm transition hover:bg-white/20 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2.5 rounded-md border border-dashed border-line/20 bg-brand-bg px-4 py-4 text-sm text-brand-text/60 transition hover:border-brand-primary/40 hover:text-brand-text disabled:opacity-50"
           >
-            {uploading ? 'Uploading…' : logoUrl ? 'Replace' : 'Upload'}
+            {logoUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={logoUrl} alt="Logo" className="h-9 w-auto max-w-[120px] object-contain" />
+                <span>{uploading ? 'Uploading…' : 'Replace logo'}</span>
+              </>
+            ) : (
+              <>
+                <Upload size={16} strokeWidth={1.75} aria-hidden="true" />
+                <span>{uploading ? 'Uploading…' : 'Upload a logo'}</span>
+              </>
+            )}
           </button>
           {logoUrl && (
-            <button
-              onClick={() => setLogoUrl(null)}
-              className="rounded-lg px-2 py-2 text-sm text-white/50 transition hover:text-white"
-            >
-              Remove
-            </button>
+            <div className="mt-1.5 flex justify-end">
+              <Button variant="subtle" size="sm" icon={X} onClick={() => setLogoUrl(null)}>
+                Remove logo
+              </Button>
+            </div>
           )}
         </div>
-        {error && <p className="mb-3 text-xs text-red-400">⚠️ {error}</p>}
+        {error && <p className="mt-3 text-xs text-danger">{error}</p>}
 
-        <div className="mb-1 text-sm text-white/60">Colors</div>
-        <div className="mb-6 grid grid-cols-2 gap-3">
+        <div className="mt-4 flex items-center justify-between">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-brand-text/55">
+            Colors
+          </span>
+          <Button variant="subtle" size="sm" icon={RotateCcw} onClick={resetToDefaults}>
+            Reset to defaults
+          </Button>
+        </div>
+        <div className="mt-1.5 divide-y divide-line/8 rounded-md border border-line/10">
           {palette &&
             PALETTE_FIELDS.map(({ key, label }) => (
-              <label key={key} className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm">
+              <label
+                key={key}
+                className="flex items-center justify-between gap-2 px-3 py-2 text-sm text-brand-text"
+              >
                 {label}
                 <input
                   type="color"
                   value={palette[key]}
                   onChange={(e) => setColor(key, e.target.value)}
-                  className="h-7 w-10 cursor-pointer rounded border-0 bg-transparent"
+                  className="h-8 w-12 cursor-pointer rounded-sm border border-line/15 bg-transparent p-0.5"
                 />
               </label>
             ))}
         </div>
+      </div>
 
+      <div className="border-t border-line/8 p-4">
         <div className="flex gap-2">
-          <button
-            onClick={() => void save()}
-            disabled={saving}
-            className="flex-1 rounded-lg bg-brand-primary py-2 font-semibold transition hover:opacity-90 disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Save for everyone'}
-          </button>
-          <button onClick={cancel} className="rounded-lg bg-white/10 px-4 py-2 transition hover:bg-white/20">
+          <Button variant="accent" className="flex-1" loading={saving} onClick={() => void save()}>
+            Save for everyone
+          </Button>
+          <Button variant="ghost" onClick={cancel}>
             Cancel
-          </button>
+          </Button>
         </div>
-        <p className="mt-3 text-xs text-white/40">
+        <p className="mt-3 text-xs text-brand-text/40">
           Changes apply to everyone in your workspace on their next load.
         </p>
       </div>
-    </div>
+    </Modal>
   );
 }

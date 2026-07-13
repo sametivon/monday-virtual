@@ -8,8 +8,10 @@ import { SkeletonUtils } from 'three-stdlib';
 import { AvatarConfigSchema } from '@mvs/shared';
 import { AVATAR_MODELS } from '@/engine/Avatar';
 import { applyAvatarLook, defaultPartsFor, PART_LABELS, slotsFor, type GearSlots } from '@/engine/avatarLook';
+import { UserRound } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useSessionStore } from '@/stores/sessionStore';
+import { Button, Modal } from '@/ui/primitives';
 
 const COLORS = ['#6c5ce7', '#00b894', '#0984e3', '#e17055', '#fdcb6e', '#e84393', '#d63031', '#2d3436'];
 
@@ -82,36 +84,27 @@ export function AvatarPicker() {
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="rounded-lg border border-white/10 bg-brand-surface px-4 py-2 text-sm transition hover:border-brand-primary"
-      >
-        🧑‍🎨 Customize avatar
-      </button>
+      <Button variant="ghost" icon={UserRound} onClick={() => setOpen(true)}>
+        Avatar
+      </Button>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl border border-white/10 bg-brand-surface p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Your avatar</h2>
-          <button onClick={() => setOpen(false)} className="text-white/60 hover:text-white">✕</button>
-        </div>
-
-        <div className="flex min-h-0 flex-1 gap-6">
+    <Modal title="Your avatar" size="lg" onClose={() => setOpen(false)}>
+      <div className="flex min-h-0 gap-6 p-5">
           <div className="flex w-64 shrink-0 flex-col">
             <div
-              className="h-[420px] overflow-hidden rounded-xl"
-              style={{ background: 'radial-gradient(ellipse at 50% 35%, #4a5266 0%, #23262e 75%)' }}
+              className="h-[420px] overflow-hidden rounded-lg border border-line/10"
+              style={{ background: 'radial-gradient(ellipse at 50% 35%, #ffffff 0%, #efe9df 75%)' }}
             >
               <ModelPreview modelId={modelId} parts={parts} color={color} />
             </div>
-            <div className="mt-2 text-center text-xs text-white/40">drag to rotate</div>
+            <div className="mt-2 text-center text-xs text-brand-text/45">drag to rotate</div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-            <div className="mb-2 text-sm text-white/60">Character</div>
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-brand-text/55">Character</div>
             <div className="mb-4 grid grid-cols-2 gap-2">
               {CHOICES.map(([id, m]) => (
                 <Chip key={id} active={modelId === id} onClick={() => pickCharacter(id)}>
@@ -126,7 +119,7 @@ export function AvatarPicker() {
               const equipped = equippedIn(options);
               return (
                 <div key={slot} className="mb-4">
-                  <div className="mb-2 text-sm text-white/60">{SLOT_LABELS[slot]}</div>
+                  <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-brand-text/55">{SLOT_LABELS[slot]}</div>
                   <div className="flex flex-wrap gap-2">
                     <Chip active={equipped === null} onClick={() => equip(options, null)}>
                       None
@@ -141,31 +134,29 @@ export function AvatarPicker() {
               );
             })}
 
-            <div className="mb-2 text-sm text-white/60">Cape color</div>
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-brand-text/55">Cape color</div>
             <div className="mb-6 flex flex-wrap gap-2">
               {COLORS.map((c) => (
                 <button
                   key={c}
                   onClick={() => setColor(c)}
                   style={{ backgroundColor: c }}
+                  aria-label={`Cape color ${c}`}
                   className={`h-8 w-8 rounded-full transition ${
-                    color === c ? 'ring-2 ring-white' : 'opacity-70 hover:opacity-100'
+                    color === c
+                      ? 'ring-2 ring-brand-primary ring-offset-2 ring-offset-brand-surface'
+                      : 'opacity-75 hover:opacity-100'
                   }`}
                 />
               ))}
             </div>
 
-            <button
-              onClick={() => void save()}
-              disabled={saving}
-              className="w-full rounded-lg bg-brand-primary py-2 font-semibold transition hover:opacity-90 disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : 'Save avatar'}
-            </button>
+            <Button variant="accent" className="w-full" loading={saving} onClick={() => void save()}>
+              Save avatar
+            </Button>
           </div>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -181,8 +172,10 @@ function Chip({
   return (
     <button
       onClick={onClick}
-      className={`rounded-lg px-3 py-2 text-sm transition ${
-        active ? 'bg-brand-primary' : 'bg-white/10 hover:bg-white/20'
+      className={`rounded-full border px-3 py-1.5 text-sm transition ${
+        active
+          ? 'border-transparent bg-brand-primary text-white shadow-e1'
+          : 'border-line/15 bg-brand-surface text-brand-text/75 hover:border-brand-primary/40 hover:text-brand-text'
       }`}
     >
       {children}
@@ -213,10 +206,10 @@ function ModelPreview({ modelId, parts, color }: { modelId: string; parts: strin
       onPointerLeave={() => (dragging.current = false)}
     >
       <Canvas camera={{ position: [0, 0.1, 4.2], fov: 38 }} dpr={1.5}>
-        <ambientLight intensity={0.9} />
-        <directionalLight position={[2.5, 4, 4]} intensity={1.8} />
-        <directionalLight position={[-3, 2, -3]} intensity={0.7} color="#9fb4ff" />
-        <hemisphereLight args={['#cdd6ea', '#3a3f4c', 0.6]} />
+        <ambientLight intensity={1.0} />
+        <directionalLight position={[2.5, 4, 4]} intensity={1.6} />
+        <directionalLight position={[-3, 2, -3]} intensity={0.5} color="#cdd3ff" />
+        <hemisphereLight args={['#ffffff', '#c9c0b2', 0.55]} />
         <Suspense fallback={null}>
           <PreviewModel key={modelId} modelId={modelId} parts={parts} color={color} rotation={rotation} />
         </Suspense>

@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { Globe, MapPin, MessageCircle, MessagesSquare, X } from 'lucide-react';
 import { ChatScope, type ChatMessageBroadcast } from '@mvs/shared';
 import { api } from '@/lib/api';
 import { sendChat } from '@/realtime/useSpaceSocket';
 import { useChatStore, type ConversationKey } from '@/stores/chatStore';
 import { usePresenceStore } from '@/stores/presenceStore';
 import { useSessionStore } from '@/stores/sessionStore';
+import { Button, EmptyState, IconButton, Panel, Tooltip } from '@/ui/primitives';
 
 const QUICK_EMOJIS = ['👍', '😀', '🎉', '❤️', '😂', '👋'];
 
@@ -43,13 +46,18 @@ export function ChatPanel({ spaceId }: { spaceId: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className={`absolute bottom-4 left-4 rounded-xl px-4 py-2 backdrop-blur transition ${
-          flash ? 'animate-pulse bg-brand-primary' : 'bg-black/50 hover:bg-black/70'
+        className={`absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+          flash
+            ? 'animate-pulse bg-brand-primary text-white shadow-e2'
+            : 'glass text-brand-text hover:shadow-e2'
         }`}
       >
-        💬 Chat
+        <MessageCircle size={15} strokeWidth={1.75} aria-hidden="true" />
+        Chat
         {totalUnread > 0 && (
-          <span className="ml-2 rounded-full bg-brand-primary px-2 py-0.5 text-xs">{totalUnread}</span>
+          <span className="rounded-full bg-brand-primary px-2 py-0.5 text-xs font-semibold text-white">
+            {totalUnread}
+          </span>
         )}
       </button>
     );
@@ -58,32 +66,38 @@ export function ChatPanel({ spaceId }: { spaceId: string }) {
   const dmKeys = Object.keys(dmNames);
 
   return (
-    <div className="absolute bottom-4 left-4 top-20 flex w-80 flex-col rounded-xl bg-black/60 backdrop-blur">
-      <div className="flex items-center gap-1 overflow-x-auto border-b border-white/10 p-2">
-        <Tab label="📍 Space" k={roomKey} activeKey={activeKey} unread={unread} onSelect={setActive} />
-        <Tab label="🌐 Global" k="GLOBAL" activeKey={activeKey} unread={unread} onSelect={setActive} />
+    <Panel
+      variant="glass-strong"
+      padding="none"
+      className="absolute bottom-4 left-4 top-20 flex w-[330px] flex-col overflow-hidden"
+    >
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-line/10 p-2">
+        <Tab icon={MapPin} label="Space" k={roomKey} activeKey={activeKey} unread={unread} onSelect={setActive} />
+        <Tab icon={Globe} label="Global" k="GLOBAL" activeKey={activeKey} unread={unread} onSelect={setActive} />
         {dmKeys.map((k) => (
           <Tab key={k} label={`@${dmNames[k]}`} k={k} activeKey={activeKey} unread={unread} onSelect={setActive} />
         ))}
-        <button onClick={() => setOpen(false)} className="ml-auto px-2 text-white/60 hover:text-white">
-          ✕
-        </button>
+        <Tooltip label="Close chat" className="ml-auto">
+          <IconButton icon={X} aria-label="Close chat" size="sm" onClick={() => setOpen(false)} />
+        </Tooltip>
       </div>
 
       <MessageList messages={messages[activeKey] ?? []} myUserId={me.user.id} activeKey={activeKey} spaceId={spaceId} />
 
       <Composer activeKey={activeKey} spaceId={spaceId} />
-    </div>
+    </Panel>
   );
 }
 
 function Tab({
+  icon: Ico,
   label,
   k,
   activeKey,
   unread,
   onSelect,
 }: {
+  icon?: LucideIcon;
   label: string;
   k: ConversationKey;
   activeKey: ConversationKey;
@@ -91,15 +105,27 @@ function Tab({
   onSelect: (k: ConversationKey) => void;
 }) {
   const count = unread[k] ?? 0;
+  const active = activeKey === k;
   return (
     <button
       onClick={() => onSelect(k)}
-      className={`shrink-0 rounded-lg px-2 py-1 text-xs transition ${
-        activeKey === k ? 'bg-brand-primary' : 'bg-white/10 hover:bg-white/20'
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition ${
+        active
+          ? 'bg-brand-primary text-white shadow-e1'
+          : 'text-brand-text/60 hover:bg-line/8 hover:text-brand-text'
       }`}
     >
+      {Ico && <Ico size={14} strokeWidth={1.75} aria-hidden="true" />}
       {label}
-      {count > 0 && <span className="ml-1 rounded-full bg-red-500 px-1.5">{count}</span>}
+      {count > 0 && (
+        <span
+          className={`rounded-full px-1.5 py-px text-[10px] font-semibold text-white ${
+            k.startsWith('DM:') ? 'bg-danger' : 'bg-brand-primary'
+          }`}
+        >
+          {count}
+        </span>
+      )}
     </button>
   );
 }
@@ -124,25 +150,37 @@ function MessageList({
   return (
     <div className="flex-1 overflow-y-auto p-3">
       {messages.length >= 50 && (
-        <button
+        <Button
+          variant="subtle"
+          size="sm"
+          className="mb-2 w-full"
           onClick={() => void fetchHistory(activeKey, spaceId, messages[0]?.createdAt)}
-          className="mb-2 w-full rounded bg-white/10 py-1 text-xs text-white/60 hover:bg-white/20"
         >
           Load earlier
-        </button>
+        </Button>
       )}
       {messages.length === 0 && (
-        <div className="py-8 text-center text-xs text-white/40">No messages yet — say hi 👋</div>
+        <EmptyState
+          icon={MessagesSquare}
+          title="No messages yet"
+          body="Say hi — messages in this conversation show up here."
+        />
       )}
       {messages.map((m) => (
         <div key={m.id} className="mb-2">
-          <span className={`text-xs font-semibold ${m.fromUserId === myUserId ? 'text-brand-primary' : 'text-emerald-300'}`}>
+          <span
+            className={`text-xs font-semibold ${
+              m.fromUserId === myUserId ? 'text-brand-primary' : 'text-success'
+            }`}
+          >
             {m.fromUserId === myUserId ? 'You' : m.fromName}
           </span>
-          <span className="ml-2 text-[10px] text-white/30">
+          <span className="ml-2 text-[10px] text-brand-text/40">
             {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
-          <div className="whitespace-pre-wrap break-words text-sm">{renderBody(m.body, m.mentions, myUserId)}</div>
+          <div className="whitespace-pre-wrap break-words text-sm text-brand-text">
+            {renderBody(m.body, m.mentions, myUserId)}
+          </div>
         </div>
       ))}
       <div ref={bottomRef} />
@@ -157,7 +195,14 @@ function renderBody(body: string, mentions: string[] | undefined, myUserId: stri
   const mentionsMe = (mentions ?? []).includes(myUserId);
   return parts.map((part, i) =>
     part.startsWith('@') ? (
-      <span key={i} className={mentionsMe ? 'rounded bg-brand-primary/40 px-0.5 font-semibold' : 'font-semibold text-brand-secondary'}>
+      <span
+        key={i}
+        className={
+          mentionsMe
+            ? 'rounded-sm bg-brand-primary/15 px-0.5 font-semibold text-brand-primary'
+            : 'font-semibold text-brand-secondary'
+        }
+      >
         {part}
       </span>
     ) : (
@@ -209,14 +254,14 @@ function Composer({ activeKey, spaceId }: { activeKey: ConversationKey; spaceId:
   };
 
   return (
-    <div className="relative border-t border-white/10 p-2">
+    <div className="relative border-t border-line/10 p-2">
       {candidates.length > 0 && (
-        <div className="absolute bottom-full left-2 mb-1 w-56 rounded-lg bg-black/90 p-1 backdrop-blur">
+        <div className="glass-strong absolute bottom-full left-2 mb-1 w-56 rounded-md p-1">
           {candidates.map((p) => (
             <button
               key={p.userId}
               onClick={() => insertMention(p.name)}
-              className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-white/10"
+              className="block w-full rounded-sm px-2 py-1 text-left text-sm text-brand-text hover:bg-line/8"
             >
               @{p.name}
             </button>
@@ -225,7 +270,12 @@ function Composer({ activeKey, spaceId }: { activeKey: ConversationKey; spaceId:
       )}
       <div className="mb-1 flex gap-1">
         {QUICK_EMOJIS.map((e) => (
-          <button key={e} onClick={() => setText((t) => t + e)} className="rounded px-1 hover:bg-white/10">
+          <button
+            key={e}
+            onClick={() => setText((t) => t + e)}
+            aria-label={`Insert ${e}`}
+            className="rounded-sm px-1 transition hover:bg-line/8"
+          >
             {e}
           </button>
         ))}
@@ -240,11 +290,11 @@ function Composer({ activeKey, spaceId }: { activeKey: ConversationKey; spaceId:
             e.stopPropagation(); // never leak typing into avatar controls
           }}
           placeholder="Message… (@ to mention)"
-          className="min-w-0 flex-1 rounded-lg bg-white/10 px-3 py-2 text-sm outline-none placeholder:text-white/30 focus:bg-white/15"
+          className="min-w-0 flex-1 rounded-md border border-line/15 bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none placeholder:text-brand-text/40 focus:border-brand-primary/40 focus:ring-2 focus:ring-brand-primary/25"
         />
-        <button onClick={send} className="rounded-lg bg-brand-primary px-3 text-sm transition hover:opacity-90">
+        <Button variant="accent" onClick={send}>
           Send
-        </button>
+        </Button>
       </div>
     </div>
   );
