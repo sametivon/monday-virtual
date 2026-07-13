@@ -83,10 +83,15 @@ for (const pair of pairs) {
     idlePose.set(node, entry);
   }
 
-  // Build the static Sit clip: every Idle-animated node gets one keyframe of
-  // its Idle frame-0 value; targeted bones get the sit delta on top.
+  // Build the static Sit clip. TWO identical keyframes over 1s — a
+  // zero-duration clip evaluates nondeterministically in three.js
+  // crossfades (the pose only partially applied on some machines).
   const buffer = root.listBuffers()[0];
-  const timeAcc = doc.createAccessor('SitTime').setType('SCALAR').setArray(new Float32Array([0])).setBuffer(buffer);
+  const timeAcc = doc
+    .createAccessor('SitTime')
+    .setType('SCALAR')
+    .setArray(new Float32Array([0, 1]))
+    .setBuffer(buffer);
   const sit = doc.createAnimation('Sit');
   for (const [node, pose] of idlePose) {
     const name = node.getName();
@@ -105,9 +110,9 @@ for (const pair of pairs) {
       const acc = doc
         .createAccessor(`Sit/${name}/${path}`)
         .setType(path === 'rotation' ? 'VEC4' : 'VEC3')
-        .setArray(new Float32Array(value))
+        .setArray(new Float32Array([...value, ...value]))
         .setBuffer(buffer);
-      const sampler = doc.createAnimationSampler().setInput(timeAcc).setOutput(acc).setInterpolation('STEP');
+      const sampler = doc.createAnimationSampler().setInput(timeAcc).setOutput(acc).setInterpolation('LINEAR');
       const channel = doc.createAnimationChannel().setTargetNode(node).setTargetPath(path).setSampler(sampler);
       sit.addSampler(sampler).addChannel(channel);
     }
