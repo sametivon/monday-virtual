@@ -95,20 +95,19 @@ export function Avatar({
         <KayKitBody modelId={modelId} parts={parts} color={color} animation={animation} isLocal={isLocal} />
       )}
       {showName && (
-        // Above the helmet, drawn on top of geometry (depthTest off) with a
-        // backing pill — readable against any armor or background.
+        // Above the helmet, drawn on top of geometry — depthTest stays OFF for
+        // players only (you find people through walls); the pill wears the
+        // app's paper/ink language instead of a black game chip (B4).
         <Billboard position={[0, 2.55, 0]}>
           <mesh renderOrder={998}>
             <planeGeometry args={[Math.max(0.9, name.length * 0.17 + 0.3), 0.46]} />
-            <meshBasicMaterial color="#000000" transparent opacity={0.55} depthTest={false} />
+            <meshBasicMaterial color="#fdfcf9" transparent opacity={0.9} depthTest={false} />
           </mesh>
           <Text
             fontSize={0.28}
-            color="#ffffff"
+            color="#211c29"
             anchorX="center"
             anchorY="middle"
-            outlineWidth={0.02}
-            outlineColor="#000000"
             renderOrder={999}
             material-depthTest={false}
           >

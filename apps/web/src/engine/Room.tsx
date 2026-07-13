@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { Suspense, useMemo } from 'react';
 import type { InteriorConfig, SceneConfig } from '@mvs/shared';
 import { usePlayerStore } from '@/stores/playerStore';
 import { onFloorClick } from './floorClick';
+import { ModelObject } from './objects/ModelObject';
 import { useHexCarpetTexture, useTiledPbr } from './materials';
 
 /**
@@ -331,10 +332,26 @@ function LightRods({ width, depth, H }: { width: number; depth: number; H: numbe
   );
 }
 
-/** Simple stylized potted plant — low-poly greenery for corners. */
+/** Corner greenery: Kenney potted plant GLB, primitive fallback while it streams. */
 function Plant({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
+      <Suspense fallback={<ProceduralPlant />}>
+        <ModelObject
+          spec={{
+            url: '/models/pottedPlant.glb',
+            height: 1.5,
+            tints: { plant: '#4f945a' },
+          }}
+        />
+      </Suspense>
+    </group>
+  );
+}
+
+function ProceduralPlant() {
+  return (
+    <group>
       <mesh castShadow position={[0, 0.3, 0]}>
         <cylinderGeometry args={[0.32, 0.42, 0.6, 10]} />
         <meshStandardMaterial color="#3a3531" roughness={0.8} />

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Grid, OrbitControls, PerformanceMonitor, SoftShadows } from '@react-three/drei';
+import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import {
   ACESFilmicToneMapping,
   ExtrudeGeometry,
@@ -16,6 +17,8 @@ import { useSessionStore } from '@/stores/sessionStore';
 import { usePlayerStore } from '@/stores/playerStore';
 import { usePresenceStore } from '@/stores/presenceStore';
 import { Amphitheater } from './Amphitheater';
+import { SceneEnvironment } from './environment';
+import { usePerfTier } from './perfTier';
 import { Avatar } from './Avatar';
 import { CameraRig } from './CameraRig';
 import { onFloorClick } from './floorClick';
@@ -35,6 +38,8 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
   const { scene } = manifest;
   // Resolution scales down when the GPU can't hold framerate (M6).
   const [dpr, setDpr] = useState(1.5);
+  // Visual-quality tier: IBL + post-processing at high/medium, bare at low.
+  const tier = usePerfTier((s) => s.tier);
 
   // Drop the avatar at the spawn point when ENTERING a space — keyed on spaceId,
   // not the whole scene object, so an in-editor manifest refresh (moving/scaling
@@ -61,10 +66,19 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
       gl={{ antialias: true, toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.15 }}
     >
       <PerformanceMonitor
-        onIncline={() => setDpr(2)}
-        onDecline={() => setDpr(1)}
+        onIncline={() => {
+          setDpr(2);
+          usePerfTier.getState().up();
+        }}
+        onDecline={() => {
+          setDpr(1);
+          usePerfTier.getState().down();
+        }}
         flipflops={3}
-        onFallback={() => setDpr(1)}
+        onFallback={() => {
+          setDpr(1);
+          usePerfTier.getState().floor();
+        }}
       />
       {/* Softer shadow penumbra than the default hard map — reads as venue
           lighting rather than a stamped-on dark blob. */}
@@ -87,6 +101,9 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
       {/* Anything that streams assets must suspend INSIDE the canvas, or the
           whole scene unmounts to a blank canvas while loading. */}
       <Suspense fallback={null}>
+        {/* IBL: reflections + material response from a local HDRI (background
+            stays the room color). Skipped entirely on the low tier. */}
+        {tier !== 'low' && <SceneEnvironment skybox={scene.environment.skybox} />}
         {scene.environment.interior ? (
           // Designed interiors replace the infinite-grid void (Phase 2).
           <Room
@@ -123,6 +140,16 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
         <LocalAvatar scene={scene} />
         <RemoteAvatars />
       </Suspense>
+
+      {/* Post-processing: bloom makes the emissive accents (stage lip, LED
+          rods, screen glow) actually glow; a whisper of vignette focuses the
+          frame. High/medium tiers only — low renders the bare pipeline. */}
+      {tier !== 'low' && (
+        <EffectComposer multisampling={4}>
+          <Bloom luminanceThreshold={1} mipmapBlur intensity={0.5} />
+          <Vignette eskil={false} offset={0.12} darkness={0.55} />
+        </EffectComposer>
+      )}
 
       <CameraRig bounds={scene.bounds} />
       <OrbitControls

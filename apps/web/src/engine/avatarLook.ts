@@ -81,12 +81,18 @@ export const PART_LABELS: Record<string, string> = {
   Barbarian_Round_Shield: 'Round shield',
 };
 
+/**
+ * Default loadouts are deliberately weapon-free: this is a workplace, not a
+ * dungeon (swords in the office were the single biggest "game asset" tell).
+ * Users with `parts: undefined` get these; anyone who explicitly equipped
+ * gear in the picker keeps their choice — nothing is removed from the picker.
+ */
 const DEFAULT_PARTS: Record<string, string[]> = {
-  knight: ['Knight_Helmet', 'Knight_Cape', '1H_Sword', 'Badge_Shield'],
-  mage: ['Mage_Hat', 'Mage_Cape', '2H_Staff'],
-  rogue: ['Rogue_Cape', 'Knife'],
-  rogue_hooded: ['Rogue_Cape', 'Knife'],
-  barbarian: ['Barbarian_Hat', 'Barbarian_Cape', '1H_Axe'],
+  knight: ['Knight_Cape'],
+  mage: ['Mage_Hat', 'Mage_Cape'],
+  rogue: ['Rogue_Cape'],
+  rogue_hooded: ['Rogue_Cape'],
+  barbarian: ['Barbarian_Cape'],
 };
 
 export function slotsFor(modelId: string): GearSlots {
