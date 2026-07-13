@@ -23,7 +23,16 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), h
  * single-sided (dollhouse trick), so without this, zooming out near a wall
  * pulls the camera outside the room and the view falls apart.
  */
-export function CameraRig({ bounds }: { bounds: WorldManifest['scene']['bounds'] }) {
+export function CameraRig({
+  bounds,
+  ceiling,
+}: {
+  bounds: WorldManifest['scene']['bounds'];
+  /** Interior wall height — the camera must stay under it. Above the (back-
+   *  face-culled, invisible) ceiling plane, light fixtures appear to float
+   *  over the floor — the long-mysterious "slab at spawn". */
+  ceiling?: number;
+}) {
   useFrame((state, delta) => {
     const controls = state.controls as unknown as {
       target: Vector3;
@@ -44,9 +53,10 @@ export function CameraRig({ bounds }: { bounds: WorldManifest['scene']['bounds']
     // the orbit from this clamped position, so the zoom just stops at the wall).
     const [minX, , minZ] = bounds.min;
     const [maxX, maxY, maxZ] = bounds.max;
+    const topY = ceiling ? Math.min(maxY, ceiling) - WALL_MARGIN : maxY - WALL_MARGIN;
     state.camera.position.set(
       clamp(state.camera.position.x, minX + WALL_MARGIN, maxX - WALL_MARGIN),
-      clamp(state.camera.position.y, 0.5, maxY - WALL_MARGIN),
+      clamp(state.camera.position.y, 0.5, topY),
       clamp(state.camera.position.z, minZ + WALL_MARGIN, maxZ - WALL_MARGIN),
     );
     controls.update();

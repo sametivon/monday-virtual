@@ -30,28 +30,30 @@ export const DEFAULT_PALETTE: BrandingPalette = BrandingPaletteSchema.parse({});
  * refreshes stale ones at login (the scene editor will replace this with
  * explicit versioning).
  */
-export const SCENE_REV = 15;
+export const SCENE_REV = 16;
 
 /** Per-space-type default scene config. All validated at module load. */
 export const SCENE_PRESETS: Record<SpaceType, SceneConfig> = {
   [SpaceType.LOBBY]: SceneConfigSchema.parse({
     environment: {
       skybox: 'city',
-      groundColor: '#241f1a',
+      groundColor: '#d9d0c2',
+      // Light-first palette (S2): plaster walls, warm bright ceiling — the
+      // room itself reads like the product's paper, not a game dungeon.
       interior: {
         floor: 'wood',
-        wallColor: '#9c8a72',
-        panelColor: '#46333b',
-        ceilingColor: '#332d27',
+        wallColor: '#e7ddcc',
+        panelColor: '#9c8d78',
+        ceilingColor: '#f1ebe1',
         accentColor: '#d9a441',
-        lightColor: '#ffe7c4',
+        lightColor: '#ffedd6',
         wallHeight: 6,
       },
     },
     lighting: {
-      ambientIntensity: 0.75,
-      ambientColor: '#fff1dc',
-      directionalIntensity: 1.1,
+      ambientIntensity: 0.85,
+      ambientColor: '#fff6ea',
+      directionalIntensity: 1.0,
     },
     bounds: { min: [-24, 0, -20], max: [24, 12, 16] },
     spawnPoints: [{ id: 'entrance', position: [0, 0, 8], rotation: Math.PI }],
@@ -60,22 +62,24 @@ export const SCENE_PRESETS: Record<SpaceType, SceneConfig> = {
   [SpaceType.AUDITORIUM]: SceneConfigSchema.parse({
     environment: {
       skybox: 'studio',
-      groundColor: '#1c2233',
+      groundColor: '#3f3a34',
+      // Keynote hall (S3): charcoal carpet, washed light walls with walnut
+      // slat paneling, focused mid-dark ceiling. The gold hex grid is retired.
       interior: {
-        floor: 'carpet-hex',
-        floorColor: '#222b40',
+        floor: 'carpet',
+        floorColor: '#37333c',
         accentColor: '#c9a23f',
-        wallColor: '#8a7456',
-        panelColor: '#4a2c33',
-        ceilingColor: '#262019',
-        lightColor: '#ffe2b8',
+        wallColor: '#cfc4b2',
+        panelColor: '#6b4f39',
+        ceilingColor: '#453e36',
+        lightColor: '#ffe8cd',
         wallHeight: 14,
       },
     },
-    lighting: { ambientIntensity: 1.0, ambientColor: '#f3ecff', directionalIntensity: 1.3 },
-    // Sized to contain the raked bowl: low stage at the front, terraced seating
-    // rising away from it (sightlines guaranteed by the geometry).
-    bounds: { min: [-40, 0, -46], max: [40, 18, 6] },
+    lighting: { ambientIntensity: 0.8, ambientColor: '#f6efe6', directionalIntensity: 1.0 },
+    // Tightened around the bowl (S3): the old 80×52 hall left ~15m of bare
+    // glowing margin on every side of the seating.
+    bounds: { min: [-30, 0, -46], max: [30, 18, -2] },
     spawnPoints: [{ id: 'mid', position: [0, 2.4, -16], rotation: Math.PI }],
     // Auditorium uses near-uniform audience audio; widen falloff.
     spatialAudio: { minDistance: 4, maxDistance: 60, rolloff: 'linear' },
@@ -266,7 +270,7 @@ const AUDITORIUM_BOWL = {
 function audienceRows(): DefaultSceneObject[] {
   const b = AUDITORIUM_BOWL;
   const chairs: DefaultSceneObject[] = [];
-  const seatGap = 2.8; // ~m between seats along a row
+  const seatGap = 1.15; // theater spacing — 2.8m read as scattered toys (S3)
   for (let row = 0; row < b.rows; row++) {
     const radius = b.innerRadius + b.rowDepth * (row + 0.5);
     const y = b.riser * (row + 1); // terrace height for this row
@@ -280,7 +284,7 @@ function audienceRows(): DefaultSceneObject[] {
         obj({
           type: ObjectType.CHAIR,
           transform: t([x, y, z], yaw),
-          config: { type: ObjectType.CHAIR, sitRotation: yaw, style: 'theater', color: '#5e2333' },
+          config: { type: ObjectType.CHAIR, sitRotation: yaw, style: 'theater', color: '#3d3844' },
           interaction: { onClick: 'sit', permissionsRequired: [] },
         }),
       );
@@ -303,7 +307,7 @@ const AUDITORIUM_OBJECTS: DefaultSceneObject[] = [
   ...audienceRows(),
   obj({
     type: ObjectType.PORTAL,
-    transform: t([30, 0, -40]),
+    transform: t([24, 0, -40]),
     config: { type: ObjectType.PORTAL, targetSpaceId: '', label: 'Lobby' },
     interaction: { onClick: 'teleport', permissionsRequired: [] },
   }),

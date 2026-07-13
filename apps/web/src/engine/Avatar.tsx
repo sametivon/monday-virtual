@@ -10,27 +10,39 @@ import { HumanoidAvatar } from '@/engine/HumanoidAvatar';
 import { usePlayerStore } from '@/stores/playerStore';
 
 /**
- * GLTF avatar with a crossfading animation state machine (M2). The model is a
- * CC0 KayKit character served from our own origin (never a runtime CDN), with
- * its clip library mapped onto the shared AvatarAnimation states. `modelId`
- * from the user's avatarConfig picks the character file (avatar picker later).
+ * GLTF avatar with a crossfading animation state machine (M2). Models are CC0
+ * Quaternius office/casual people (S5 — the KayKit fantasy classes were the
+ * product's biggest "game asset" tell), served from our own origin, with the
+ * clip library mapped onto the shared AvatarAnimation states. The Sit clip is
+ * synthesized by scripts/build-avatars.mjs (the source pack ships none).
+ *
+ * Legacy ids (knight/mage/…) map onto office equivalents so every stored
+ * avatarConfig keeps resolving — nobody logs in as a missing model.
  */
 export const AVATAR_MODELS: Record<string, { file: string; label: string }> = {
-  default: { file: '/avatars/Knight.glb', label: 'Knight' },
-  knight: { file: '/avatars/Knight.glb', label: 'Knight' },
-  mage: { file: '/avatars/Mage.glb', label: 'Mage' },
-  rogue: { file: '/avatars/Rogue.glb', label: 'Rogue' },
-  barbarian: { file: '/avatars/Barbarian.glb', label: 'Barbarian' },
-  rogue_hooded: { file: '/avatars/Rogue_Hooded.glb', label: 'Hooded Rogue' },
+  default: { file: '/avatars/office/Suit_M.glb', label: 'Suit' },
+  suit_m: { file: '/avatars/office/Suit_M.glb', label: 'Suit' },
+  casual_m: { file: '/avatars/office/Casual_M.glb', label: 'Casual' },
+  hoodie_m: { file: '/avatars/office/Hoodie_M.glb', label: 'Hoodie' },
+  jacket_m: { file: '/avatars/office/Jacket_M.glb', label: 'Jacket' },
+  suit_w: { file: '/avatars/office/Suit_W.glb', label: 'Suit' },
+  formal_w: { file: '/avatars/office/Formal_W.glb', label: 'Formal' },
+  casual_w: { file: '/avatars/office/Casual_W.glb', label: 'Casual' },
+  jacket_w: { file: '/avatars/office/Jacket_W.glb', label: 'Jacket' },
+  // Legacy KayKit ids → office equivalents.
+  knight: { file: '/avatars/office/Suit_M.glb', label: 'Suit' },
+  mage: { file: '/avatars/office/Formal_W.glb', label: 'Formal' },
+  rogue: { file: '/avatars/office/Casual_M.glb', label: 'Casual' },
+  barbarian: { file: '/avatars/office/Jacket_M.glb', label: 'Jacket' },
+  rogue_hooded: { file: '/avatars/office/Hoodie_M.glb', label: 'Hoodie' },
 };
 
 const CLIPS: Record<AvatarAnimation, string> = {
   [AvatarAnimation.IDLE]: 'Idle',
-  [AvatarAnimation.WALK]: 'Walking_A',
-  [AvatarAnimation.RUN]: 'Running_A',
-  // The pack has no dedicated wave; Cheer reads as a greeting emote.
-  [AvatarAnimation.WAVE]: 'Cheer',
-  [AvatarAnimation.SIT]: 'Sit_Chair_Idle',
+  [AvatarAnimation.WALK]: 'Walk',
+  [AvatarAnimation.RUN]: 'Run',
+  [AvatarAnimation.WAVE]: 'Wave',
+  [AvatarAnimation.SIT]: 'Sit',
 };
 
 /** States that play once and then return to idle (vs. looping locomotion). */
@@ -104,6 +116,7 @@ export function Avatar({
             <meshBasicMaterial color="#fdfcf9" transparent opacity={0.9} depthTest={false} />
           </mesh>
           <Text
+            font="/fonts/inter-medium.woff"
             fontSize={0.28}
             color="#211c29"
             anchorX="center"

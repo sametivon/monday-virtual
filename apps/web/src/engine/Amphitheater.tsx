@@ -43,11 +43,11 @@ function terraceGeometry(
 
 export function Amphitheater({
   bowl,
-  carpetColor = '#2a3550',
-  accentColor = '#c9a23f',
+  carpetColor = '#37333c',
 }: {
   bowl: Bowl;
   carpetColor?: string;
+  /** Kept for call-site compatibility; the bowl no longer glows (S3). */
   accentColor?: string;
 }) {
   const [cx, cz] = bowl.center;
@@ -82,11 +82,12 @@ export function Amphitheater({
           <meshStandardMaterial color={carpetColor} roughness={0.92} metalness={0.04} />
         </mesh>
       ))}
-      {/* Glowing accent line along each step's leading edge (venue look). */}
+      {/* Pale step nosing on each leading edge — wayfinding through material
+          contrast, not glow (S3). */}
       {steps.map((step, i) => (
         <mesh key={`lip-${i}`} position={[0, step.y + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[step.lipInner, step.lipInner + 0.12, 64, 1, thetaStart, thetaLength]} />
-          <meshStandardMaterial color={accentColor} emissive={accentColor} emissiveIntensity={0.6} />
+          <ringGeometry args={[step.lipInner, step.lipInner + 0.09, 64, 1, thetaStart, thetaLength]} />
+          <meshStandardMaterial color="#8f887b" roughness={0.9} />
         </mesh>
       ))}
     </group>

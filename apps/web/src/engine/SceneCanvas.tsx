@@ -12,7 +12,7 @@ import {
   Vector3,
   type Group,
 } from 'three';
-import type { WorldManifest } from '@mvs/shared';
+import { ObjectType, type SceneObjectDTO, type WorldManifest } from '@mvs/shared';
 import { useSessionStore } from '@/stores/sessionStore';
 import { usePlayerStore } from '@/stores/playerStore';
 import { usePresenceStore } from '@/stores/presenceStore';
@@ -26,6 +26,7 @@ import { useTiledPbr } from './materials';
 import { RemoteAvatar } from './RemoteAvatar';
 import { Room } from './Room';
 import { SceneObjectMesh } from './SceneObject';
+import { TheaterSeating } from './TheaterSeating';
 import { useLocalMovement } from './useLocalMovement';
 
 /**
@@ -36,8 +37,9 @@ import { useLocalMovement } from './useLocalMovement';
  */
 export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest; onInteract: (id: string) => void }) {
   const { scene } = manifest;
-  // Resolution scales down when the GPU can't hold framerate (M6).
-  const [dpr, setDpr] = useState(1.5);
+  // Resolution scales with proven headroom, capped at 1.5 — the step to 2.0
+  // is near-invisible in a 3D scene but costs ~78% more pixels (S1).
+  const [dpr, setDpr] = useState(1.25);
   // Visual-quality tier: IBL + post-processing at high/medium, bare at low.
   const tier = usePerfTier((s) => s.tier);
 
@@ -57,17 +59,33 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
   }, [manifest.spaceId]);
 
   const interior = scene.environment.interior;
+
+  // Theater seats render as one instanced batch (5 draw calls for ~435
+  // seats); everything else goes through the per-object dispatcher (S3).
+  const { theaterSeats, otherObjects } = useMemo(() => {
+    const seats: SceneObjectDTO[] = [];
+    const rest: SceneObjectDTO[] = [];
+    for (const o of manifest.objects) {
+      if (o.type === ObjectType.CHAIR && (o.config as { style?: string }).style === 'theater') {
+        seats.push(o);
+      } else {
+        rest.push(o);
+      }
+    }
+    return { theaterSeats: seats, otherObjects: rest };
+  }, [manifest.objects]);
+
   return (
     <Canvas
       shadows
       // Wider lens + a higher/further start so a big hall reads as big on entry.
-      camera={{ position: [0, 12, 22], fov: 62 }}
+      camera={{ position: [0, 5, 20], fov: 62 }}
       dpr={dpr}
       gl={{ antialias: true, toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.15 }}
     >
       <PerformanceMonitor
         onIncline={() => {
-          setDpr(2);
+          setDpr(1.5);
           usePerfTier.getState().up();
         }}
         onDecline={() => {
@@ -80,9 +98,9 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
           usePerfTier.getState().floor();
         }}
       />
-      {/* Softer shadow penumbra than the default hard map — reads as venue
-          lighting rather than a stamped-on dark blob. */}
-      <SoftShadows size={26} samples={12} focus={0.7} />
+      {/* PCSS penumbra is expensive — only the earned high tier pays for it;
+          medium/low use the plain shadow map. */}
+      {tier === 'high' && <SoftShadows size={26} samples={12} focus={0.7} />}
       <color attach="background" args={[interior?.ceilingColor ?? scene.environment.groundColor]} />
       <ambientLight intensity={scene.lighting.ambientIntensity} color={scene.lighting.ambientColor} />
       <directionalLight
@@ -90,13 +108,13 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
         position={scene.lighting.directionalPosition}
         intensity={scene.lighting.directionalIntensity}
         color={interior?.lightColor ?? '#ffffff'}
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={tier === 'high' ? [2048, 2048] : [1024, 1024]}
         shadow-bias={-0.0004}
       />
       {/* Warm-from-above, cool-from-below hemisphere fill keyed to the room's
           light color, so corners read as lit interior rather than black void.
           (HDR/IBL for designed scenes arrives later, served from our storage.) */}
-      <hemisphereLight args={[interior?.lightColor ?? '#aab4cc', '#2a2620', 0.85]} />
+      <hemisphereLight args={[interior?.lightColor ?? '#f6efe4', '#b7ab99', 0.75]} />
 
       {/* Anything that streams assets must suspend INSIDE the canvas, or the
           whole scene unmounts to a blank canvas while loading. */}
@@ -133,7 +151,8 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
         )}
         {scene.stage && <StagePlatform stage={scene.stage} accent={scene.environment.interior?.accentColor} />}
 
-        {manifest.objects.map((o) => (
+        <TheaterSeating objects={theaterSeats} onInteract={onInteract} />
+        {otherObjects.map((o) => (
           <SceneObjectMesh key={o.id} object={o} onInteract={onInteract} />
         ))}
 
@@ -145,22 +164,22 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
           rods, screen glow) actually glow; a whisper of vignette focuses the
           frame. High/medium tiers only — low renders the bare pipeline. */}
       {tier !== 'low' && (
-        <EffectComposer multisampling={4}>
+        <EffectComposer multisampling={0}>
           <Bloom luminanceThreshold={1} mipmapBlur intensity={0.5} />
           <Vignette eskil={false} offset={0.12} darkness={0.55} />
         </EffectComposer>
       )}
 
-      <CameraRig bounds={scene.bounds} />
+      <CameraRig bounds={scene.bounds} ceiling={interior?.wallHeight} />
       <OrbitControls
         makeDefault
         enablePan={false}
         minDistance={3}
-        maxDistance={95}
-        // Allow tilting past horizontal so you can look UP and take in the
-        // ceiling height; faster wheel zoom so scrolling out actually reaches
-        // the back of a big hall.
-        maxPolarAngle={Math.PI * 0.6}
+        // Contained: the camera must never exit the room shell (the old 95m
+        // limit let it punch through the roof and film the building from
+        // outside). 44m still frames the whole hall from the back row.
+        maxDistance={44}
+        maxPolarAngle={Math.PI * 0.55}
         zoomSpeed={1.6}
       />
     </Canvas>
@@ -218,9 +237,28 @@ function StagePlatform({
       >
         <meshStandardMaterial map={wood.map} normalMap={wood.normalMap} roughnessMap={wood.roughnessMap} />
       </mesh>
+      {/* Front-edge hairline — one of the scene's three allowed accent
+          moments, and quiet even then (DESIGN.md accent rules). */}
       <mesh>
-        <tubeGeometry args={[lip, 32, 0.045, 6, false]} />
-        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={1.3} />
+        <tubeGeometry args={[lip, 32, 0.028, 6, false]} />
+        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.3} />
+      </mesh>
+      <Podium x={stage.size[0] * 0.32} z={stage.size[1] * 0.18} y={stage.height} />
+    </group>
+  );
+}
+
+/** Speaker podium: walnut body, slanted ink reading top. Pure dressing. */
+function Podium({ x, z, y }: { x: number; z: number; y: number }) {
+  return (
+    <group position={[x, y, z]}>
+      <mesh castShadow receiveShadow position={[0, 0.55, 0]}>
+        <boxGeometry args={[0.72, 1.1, 0.5]} />
+        <meshStandardMaterial color="#6b4f39" roughness={0.65} />
+      </mesh>
+      <mesh castShadow position={[0, 1.14, -0.02]} rotation={[-0.28, 0, 0]}>
+        <boxGeometry args={[0.78, 0.05, 0.5]} />
+        <meshStandardMaterial color="#2b2731" roughness={0.7} />
       </mesh>
     </group>
   );

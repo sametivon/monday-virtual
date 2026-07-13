@@ -101,7 +101,7 @@ function FallbackBox({ object }: ObjectRendererProps) {
         <boxGeometry args={[1.6, 1, 0.2]} />
         <meshStandardMaterial color="#888888" />
       </mesh>
-      <Text position={[0, 0.8, 0]} fontSize={0.22} color="#ffffff" anchorX="center">
+      <Text font="/fonts/inter-medium.woff" position={[0, 0.8, 0]} fontSize={0.22} color="#ffffff" anchorX="center">
         {label}
       </Text>
     </group>

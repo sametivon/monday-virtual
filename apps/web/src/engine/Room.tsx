@@ -37,7 +37,7 @@ export function Room({
       <Floor width={width} depth={depth} interior={interior} />
       <Walls width={width} depth={depth} interior={interior} venue={venue} />
       <Ceiling width={width} depth={depth} interior={interior} venue={venue} />
-      {venue && <LightRods width={width} depth={depth} H={H} />}
+      {!venue && <LoungeDressing depth={depth} />}
       {interior.plants &&
         [
           [-width / 2 + 1.4, -depth / 2 + 1.4],
@@ -49,7 +49,7 @@ export function Room({
           black corners (the ceiling point-lights handle the central glow). */}
       <pointLight
         position={[0, H - 1.5, depth / 4]}
-        intensity={12}
+        intensity={7}
         color={interior.lightColor}
         distance={Math.max(width, depth) * 1.6}
         decay={2}
@@ -75,7 +75,14 @@ function Floor({ width, depth, interior }: { width: number; depth: number; inter
     >
       <planeGeometry args={[width, depth]} />
       {interior.floor === 'wood' && (
-        <meshStandardMaterial map={wood.map} normalMap={wood.normalMap} roughnessMap={wood.roughnessMap} />
+        // roughness multiplies the map: floor stays satin-matte so ceiling
+        // fixtures never mirror as glare hotspots (S2).
+        <meshStandardMaterial
+          map={wood.map}
+          normalMap={wood.normalMap}
+          roughnessMap={wood.roughnessMap}
+          roughness={0.9}
+        />
       )}
       {interior.floor === 'carpet' && (
         <meshStandardMaterial
@@ -133,45 +140,38 @@ function Walls({
               color={wallTint}
             />
           </mesh>
-          {/* Framed wall panels: a back slab + a lighter inset, so each reads
-              as mounted acoustic/art paneling rather than a flat dark void. */}
+          {/* Wall paneling (S2): venues get vertical wood-slat groups; other
+              rooms get quiet framed art slabs. No emissive edges anywhere —
+              the accent color is not architecture. */}
           {w.panels &&
-            panelOffsets(w.len).map((x, pi) => (
-              // Venue panels tilt alternately for a faceted acoustic-wall look.
-              <group key={x} position={[x, 0.4, 0.06]} rotation={[0, 0, venue ? (pi % 2 ? 0.05 : -0.05) : 0]}>
-                <mesh castShadow>
-                  <boxGeometry args={[2.3, H * (venue ? 0.78 : 0.66), 0.07]} />
-                  <meshStandardMaterial color={interior.panelColor} roughness={0.92} />
-                </mesh>
-                {/* Inset face, slightly lighter + warmer than the frame. */}
-                <mesh position={[0, 0, 0.045]}>
-                  <planeGeometry args={[1.95, H * (venue ? 0.78 : 0.66) - 0.35]} />
-                  <meshStandardMaterial color={lighten(interior.panelColor, 0.16)} roughness={0.85} />
-                </mesh>
-                {/* Thin accent top edge on the frame. */}
-                <mesh position={[0, (H * (venue ? 0.78 : 0.66)) / 2 - 0.05, 0.05]}>
-                  <planeGeometry args={[2.1, 0.04]} />
-                  <meshStandardMaterial
-                    color={interior.accentColor}
-                    emissive={interior.accentColor}
-                    emissiveIntensity={0.5}
-                  />
-                </mesh>
+            panelOffsets(w.len).map((x) => (
+              <group key={x} position={[x, 0.4, 0.06]}>
+                {venue ? (
+                  // Acoustic slat group: five vertical fins over the wall.
+                  [-0.9, -0.45, 0, 0.45, 0.9].map((sx) => (
+                    <mesh key={sx} castShadow position={[sx, 0, 0]}>
+                      <boxGeometry args={[0.16, H * 0.72, 0.09]} />
+                      <meshStandardMaterial color={interior.panelColor} roughness={0.85} />
+                    </mesh>
+                  ))
+                ) : (
+                  <>
+                    <mesh castShadow>
+                      <boxGeometry args={[2.3, H * 0.52, 0.06]} />
+                      <meshStandardMaterial color={interior.panelColor} roughness={0.9} />
+                    </mesh>
+                    <mesh position={[0, 0, 0.035]}>
+                      <planeGeometry args={[2.0, H * 0.52 - 0.3]} />
+                      <meshStandardMaterial color={lighten(interior.panelColor, 0.14)} roughness={0.85} />
+                    </mesh>
+                  </>
+                )}
               </group>
             ))}
-          {/* Crown trim near the ceiling — a warm accent line around the room. */}
-          <mesh position={[0, H / 2 - 0.18, 0.06]}>
-            <boxGeometry args={[w.len, 0.12, 0.05]} />
-            <meshStandardMaterial color={interior.accentColor} emissive={interior.accentColor} emissiveIntensity={0.45} />
-          </mesh>
-          {/* Glowing base trim. */}
-          <mesh position={[0, -H / 2 + 0.05, 0.08]}>
-            <boxGeometry args={[w.len, 0.07, 0.05]} />
-            <meshStandardMaterial
-              color={interior.accentColor}
-              emissive={interior.accentColor}
-              emissiveIntensity={1.1}
-            />
+          {/* Baseboard — a real-world material break, not a glow strip. */}
+          <mesh position={[0, -H / 2 + 0.08, 0.05]}>
+            <boxGeometry args={[w.len, 0.16, 0.04]} />
+            <meshStandardMaterial color={lighten(interior.wallColor, -0.18)} roughness={0.9} />
           </mesh>
         </group>
       ))}
@@ -265,23 +265,29 @@ function Ceiling({
       {lights.map(([x, z]) => {
         const key = `${x}:${z}`;
         return (
-          <group key={key} position={[x, -0.04, z]}>
+          // Recessed fixture (S2): dark housing + soft warm lens. Tone-mapped
+          // and capped at 0.6 so a light source reads as a designed fixture,
+          // never a blown-out white slab. toneMapped:false is reserved for
+          // content surfaces (live video / slides) — DESIGN.md rule.
+          <group key={key} position={[x, -0.06, z]}>
             <mesh>
-              <boxGeometry args={[2.6, 0.06, 1.3]} />
-              {/* Emissive (not basic) so the panel glows AND the bloom-free
-                  warm cast reads even on surfaces it doesn't directly light. */}
+              <boxGeometry args={[2.7, 0.1, 1.4]} />
+              <meshStandardMaterial color="#2b2731" roughness={0.6} metalness={0.2} />
+            </mesh>
+            <mesh position={[0, -0.051, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[2.45, 1.15]} />
               <meshStandardMaterial
                 color={interior.lightColor}
                 emissive={interior.lightColor}
-                emissiveIntensity={1.4}
-                toneMapped={false}
+                emissiveIntensity={0.6}
+                roughness={1}
               />
             </mesh>
             {litPanels.has(key) && (
               <pointLight
                 position={[0, -0.8, 0]}
                 color={interior.lightColor}
-                intensity={11}
+                intensity={10}
                 distance={H * 3}
                 decay={1.7}
                 castShadow={false}
@@ -294,41 +300,114 @@ function Ceiling({
   );
 }
 
+
 /**
- * Vertical LED light rods flanking the stage end of the hall (eXp-style):
- * clusters of thin, bright emissive sticks at varied heights and slight lean.
- * Purely emissive — no live lights, so the GPU cost is a few boxes.
+ * Lobby dressing (S4): the zones that turn "a box with tables" into a floor
+ * plan — lounge cluster, coffee corner, zone rugs, daylight windows on the
+ * rear wall. Pure client-side visuals: every tenant gets it instantly, no
+ * scene reseed, no collision/logic involvement. Positions are keyed to the
+ * lobby preset's object layout (tables at ±9, desks west, portal east).
  */
-function LightRods({ width, depth, H }: { width: number; depth: number; H: number }) {
-  // Deterministic layout (no Math.random — keeps renders/screenshots stable).
-  const rods: { x: number; z: number; h: number; lean: number }[] = [];
-  const heights = [0.82, 0.6, 0.72, 0.5, 0.66];
-  const leans = [-0.05, 0.03, -0.02, 0.05, 0.0];
-  for (let side = 0; side < 2; side++) {
-    const sx = side === 0 ? -1 : 1;
-    for (let i = 0; i < 5; i++) {
-      rods.push({
-        x: sx * (width * 0.34 + i * 1.1),
-        z: -depth / 2 + 2.2 + (i % 3) * 1.4,
-        h: H * heights[i]!,
-        lean: sx * leans[i]!,
-      });
-    }
-  }
+function LoungeDressing({ depth }: { depth: number }) {
+  const rear = depth / 2;
   return (
-    <>
-      {rods.map((r, i) => (
-        <mesh key={i} position={[r.x, r.h / 2, r.z]} rotation={[0, 0, r.lean]}>
-          <boxGeometry args={[0.14, r.h, 0.14]} />
-          <meshStandardMaterial
-            color="#ffffff"
-            emissive="#f4f0ff"
-            emissiveIntensity={2.1}
-            toneMapped={false}
-          />
+    <group>
+      {/* Zone rugs — anchor each huddle table; clicks fall through to walk. */}
+      {[-9, 9].map((x) => (
+        <mesh
+          key={x}
+          receiveShadow
+          position={[x, 0.012, 0]}
+          onClick={(e) => {
+            e.stopPropagation();
+            onFloorClick(e.point.x, e.point.z);
+          }}
+        >
+          <cylinderGeometry args={[3.4, 3.4, 0.02, 40]} />
+          <meshStandardMaterial color="#e3dccc" roughness={0.95} />
         </mesh>
       ))}
-    </>
+
+      {/* Lounge cluster: two sofas across a coffee table, rug-anchored. */}
+      <group position={[5, 0, 11.5]}>
+        <mesh
+          receiveShadow
+          position={[0, 0.012, 0.2]}
+          onClick={(e) => {
+            e.stopPropagation();
+            onFloorClick(e.point.x, e.point.z);
+          }}
+        >
+          <boxGeometry args={[6.6, 0.02, 4.6]} />
+          <meshStandardMaterial color="#e3dccc" roughness={0.95} />
+        </mesh>
+        <Dressing url="/models/loungeSofa.glb" height={0.85} pos={[-2.2, 0, 0]} yaw={Math.PI / 2} tints={SOFA_TINTS} />
+        <Dressing url="/models/loungeSofa.glb" height={0.85} pos={[2.2, 0, 0]} yaw={-Math.PI / 2} tints={SOFA_TINTS} />
+        <Dressing url="/models/tableCoffee.glb" height={0.42} pos={[0, 0, 0]} tints={{ wood: '#6b4f39' }} />
+        <Dressing url="/models/loungeSofaOttoman.glb" height={0.42} pos={[0, 0, 1.9]} tints={SOFA_TINTS} />
+        <Dressing url="/models/lampRoundFloor.glb" height={1.55} pos={[-2.4, 0, 2.1]} tints={{ metal: '#4a4550' }} />
+      </group>
+
+      {/* Coffee corner against the rear wall, west side. */}
+      <group position={[-19, 0, rear - 1.4]} rotation={[0, Math.PI, 0]}>
+        <Dressing url="/models/kitchenCabinet.glb" height={1.0} pos={[0.7, 0, 0]} tints={CABINET_TINTS} />
+        <Dressing url="/models/kitchenCabinet.glb" height={1.0} pos={[-0.7, 0, 0]} tints={CABINET_TINTS} />
+        <Dressing url="/models/kitchenCoffeeMachine.glb" height={0.42} pos={[0.7, 1.0, 0]} tints={MACHINE_TINTS} />
+        <Dressing url="/models/books.glb" height={0.28} pos={[-0.7, 1.0, 0]} tints={{ plant: '#4f945a' }} />
+      </group>
+
+      {/* Daylight windows on the rear wall (the one wall without paneling). */}
+      {[-16, -5.5, 5.5, 16].map((x) => (
+        <group key={x} position={[x, 2.9, rear - 0.07]} rotation={[0, Math.PI, 0]}>
+          <mesh castShadow>
+            <boxGeometry args={[3.3, 3.5, 0.09]} />
+            <meshStandardMaterial color="#8a7b66" roughness={0.7} />
+          </mesh>
+          {/* Soft daylight lens — tone-mapped, capped (DESIGN.md fixture rule). */}
+          <mesh position={[0, 0, 0.055]}>
+            <planeGeometry args={[2.95, 3.15]} />
+            <meshStandardMaterial color="#fff5e6" emissive="#fff3e0" emissiveIntensity={0.55} roughness={1} />
+          </mesh>
+          {[-0.5, 0.5].map((mx) => (
+            <mesh key={mx} position={[mx, 0, 0.062]}>
+              <boxGeometry args={[0.06, 3.15, 0.02]} />
+              <meshStandardMaterial color="#8a7b66" roughness={0.7} />
+            </mesh>
+          ))}
+          <mesh position={[0, 0, 0.062]}>
+            <boxGeometry args={[2.95, 0.06, 0.02]} />
+            <meshStandardMaterial color="#8a7b66" roughness={0.7} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+const SOFA_TINTS = { carpet: '#b7ad9c', wood: '#6b4f39' };
+const CABINET_TINTS = { metal: '#9a95a1', wood: '#a9805c', woodDark: '#6b4f39' };
+const MACHINE_TINTS = { metalMedium: '#4a4550', metal: '#9a95a1' };
+
+/** One dressed GLB: own Suspense so a streaming sofa never blanks the scene. */
+function Dressing({
+  url,
+  height,
+  pos,
+  yaw = 0,
+  tints,
+}: {
+  url: string;
+  height: number;
+  pos: [number, number, number];
+  yaw?: number;
+  tints?: Record<string, string>;
+}) {
+  return (
+    <group position={pos}>
+      <Suspense fallback={null}>
+        <ModelObject spec={{ url, height, yaw, tints }} />
+      </Suspense>
+    </group>
   );
 }
 

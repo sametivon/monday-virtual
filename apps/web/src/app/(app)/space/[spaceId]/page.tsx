@@ -141,8 +141,11 @@ export default function SpacePage({ params }: { params: Promise<{ spaceId: strin
   if (!manifest) return <Overlay busy>Preparing the world…</Overlay>;
 
   return (
-    <div className="relative h-full w-full">
-      <EngineErrorBoundary>
+    // The scene is a window into a space, not a void bleeding to the screen
+    // edges: paper surround, hairline border, contained viewport (S0).
+    <div className="h-full w-full bg-brand-bg p-2.5 sm:p-3.5">
+      <div className="relative h-full w-full overflow-hidden rounded-lg border border-line/60 shadow-e2">
+        <EngineErrorBoundary>
         <SceneCanvas manifest={manifest} onInteract={onInteract} />
       </EngineErrorBoundary>
       <Hud name={manifest.name} />
@@ -172,7 +175,8 @@ export default function SpacePage({ params }: { params: Promise<{ spaceId: strin
         />
       )}
       {whiteboard && <WhiteboardModal object={whiteboard} onClose={() => setWhiteboard(null)} />}
-      {screen && <ScreenViewer object={screen} onClose={() => setScreen(null)} />}
+        {screen && <ScreenViewer object={screen} onClose={() => setScreen(null)} />}
+      </div>
     </div>
   );
 }

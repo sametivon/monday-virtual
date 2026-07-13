@@ -15,8 +15,10 @@ import { Button, Modal } from '@/ui/primitives';
 
 const COLORS = ['#6c5ce7', '#00b894', '#0984e3', '#e17055', '#fdcb6e', '#e84393', '#d63031', '#2d3436'];
 
-/** Unique pickable models (the `default`/`knight` aliases collapse to one). */
-const CHOICES = Object.entries(AVATAR_MODELS).filter(([id]) => id !== 'default');
+/** The office roster (S5). Legacy KayKit ids alias these files and are not
+    offered — old saved configs render fine, new picks are people. */
+const OFFICE_IDS = ['suit_m', 'suit_w', 'formal_w', 'casual_m', 'casual_w', 'hoodie_m', 'jacket_m', 'jacket_w'];
+const CHOICES = OFFICE_IDS.map((id) => [id, AVATAR_MODELS[id]!] as const);
 
 const SLOT_LABELS: Record<keyof GearSlots, string> = {
   headgear: 'Headgear',
@@ -25,6 +27,8 @@ const SLOT_LABELS: Record<keyof GearSlots, string> = {
   offHand: 'Off hand',
 };
 const SLOT_ORDER: (keyof GearSlots)[] = ['headgear', 'cape', 'mainHand', 'offHand'];
+/** Only the legacy KayKit bodies have toggleable gear attachments. */
+const LEGACY_GEAR_IDS = new Set(['knight', 'mage', 'rogue', 'barbarian', 'rogue_hooded']);
 
 /**
  * Avatar customizer (lives on the lobby page). Builds the modular KayKit look:
@@ -45,7 +49,8 @@ export function AvatarPicker() {
     color?: string;
     parts?: string[];
   };
-  const initialModel = current.modelId === 'default' ? 'knight' : current.modelId ?? 'knight';
+  const initialModel =
+    current.modelId && OFFICE_IDS.includes(current.modelId) ? current.modelId : 'suit_m';
   const [modelId, setModelId] = useState(initialModel);
   const [color, setColor] = useState(current.color ?? COLORS[0]!);
   const [parts, setParts] = useState<string[]>(current.parts ?? defaultPartsFor(initialModel));
@@ -113,7 +118,7 @@ export function AvatarPicker() {
               ))}
             </div>
 
-            {SLOT_ORDER.map((slot) => {
+            {LEGACY_GEAR_IDS.has(modelId) && SLOT_ORDER.map((slot) => {
               const options = slots[slot];
               if (options.length === 0) return null;
               const equipped = equippedIn(options);
@@ -134,14 +139,14 @@ export function AvatarPicker() {
               );
             })}
 
-            <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-brand-text/55">Cape color</div>
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-brand-text/55">Accent color</div>
             <div className="mb-6 flex flex-wrap gap-2">
               {COLORS.map((c) => (
                 <button
                   key={c}
                   onClick={() => setColor(c)}
                   style={{ backgroundColor: c }}
-                  aria-label={`Cape color ${c}`}
+                  aria-label={`Accent color ${c}`}
                   className={`h-8 w-8 rounded-full transition ${
                     color === c
                       ? 'ring-2 ring-brand-primary ring-offset-2 ring-offset-brand-surface'
@@ -256,10 +261,10 @@ function PreviewModel({
     if (idle && !idle.isRunning()) idle.play();
   });
 
-  // Shift down so the chest sits at the camera's eye line, with headroom
-  // for tall headgear (the wizard hat tops out around y≈2.4).
+  // Shift down so the chest sits at the camera's eye line (office characters
+  // stand ~1.85 tall; legacy KayKit + hat topped out around 2.4).
   return (
-    <group ref={group} position={[0, -1.15, 0]}>
+    <group ref={group} position={[0, -0.9, 0]}>
       <primitive object={model} />
     </group>
   );

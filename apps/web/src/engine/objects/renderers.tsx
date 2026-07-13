@@ -16,6 +16,7 @@ import {
 } from 'three';
 import type { Track } from 'livekit-client';
 import { ObjectType, type SceneObjectDTO } from '@mvs/shared';
+import { SCENE_FONT } from '@/engine/font';
 import { SCENE } from '@/engine/palette';
 import { ModelObject, type ModelSpec } from './ModelObject';
 import { statusBreakdown, useBoardData } from '@/monday/useBoardData';
@@ -80,6 +81,7 @@ function LabelPill({ text, y }: { text: string; y: number }) {
         </mesh>
         <Text
           ref={label as never}
+          font={SCENE_FONT}
           position={[0, 0, 0.01]}
           fontSize={fontSize}
           color={SCENE.ink}
@@ -195,16 +197,29 @@ function ScreenRenderer({ object }: ObjectRendererProps) {
             <SlideMaterial url={slideUrl} />
           </Suspense>
         ) : (
-          <meshStandardMaterial key="off" color={SCENE.screen} emissive={SCENE.screenGlow} emissiveIntensity={0.6} side={DoubleSide} />
+          <meshStandardMaterial key="off" color={SCENE.screen} emissive={SCENE.screenGlow} emissiveIntensity={0.25} side={DoubleSide} />
         )}
       </mesh>
+      {/* Designed standby state: a switched-off display, not a lightbox. */}
+      {!texture && !slideUrl && (
+        <group position={[0, 1.35, 0.09]}>
+          <mesh position={[-0.35, 0, 0]}>
+            <circleGeometry args={[0.045, 16]} />
+            <meshStandardMaterial color={SCENE.violet} emissive={SCENE.violet} emissiveIntensity={0.4} />
+          </mesh>
+          <Text font={SCENE_FONT} position={[0.09, 0, 0]} fontSize={0.14} color={SCENE.textDimOnScreen} anchorX="left" anchorY="middle">
+            Ready to present
+          </Text>
+        </group>
+      )}
       {slideUrl && (
-        <Text position={[0, 0.22, 0.1]} fontSize={0.13} color={SCENE.textDimOnScreen} anchorX="center" anchorY="middle">
+        <Text font={SCENE_FONT} position={[0, 0.22, 0.1]} fontSize={0.13} color={SCENE.textDimOnScreen} anchorX="center" anchorY="middle">
           {`Slide ${slideIndex + 1} / ${slides.length}`}
         </Text>
       )}
       {texture && live && (
         <Text
+          font={SCENE_FONT}
           position={[0, 0.22, 0.1]}
           fontSize={0.16}
           color={SCENE.danger}
@@ -216,10 +231,10 @@ function ScreenRenderer({ object }: ObjectRendererProps) {
           {`● LIVE · ${live.local ? 'You' : live.participantName}`}
         </Text>
       )}
-      {/* Accent light bar along the screen base (venue LED-wall look). */}
-      <mesh position={[0, 0.26, 0.06]}>
-        <boxGeometry args={[4.0, 0.05, 0.04]} />
-        <meshStandardMaterial color={SCENE.amber} emissive={SCENE.amber} emissiveIntensity={0.9} />
+      {/* Quiet bezel foot — the LED accent bar violated the accent rules. */}
+      <mesh position={[0, 0.26, 0.05]}>
+        <boxGeometry args={[4.0, 0.04, 0.03]} />
+        <meshStandardMaterial color={SCENE.metalDark} roughness={0.6} metalness={0.2} />
       </mesh>
       <ObjectLabel text={label(object)} y={2.9} />
     </group>
@@ -256,6 +271,7 @@ function DashboardRenderer({ object }: ObjectRendererProps) {
       {data && (
         <group position={[0, 0, 0.08]}>
           <Text
+          font={SCENE_FONT}
             position={[0, 2.34, 0]}
             fontSize={0.16}
             color={SCENE.paper}
@@ -265,11 +281,12 @@ function DashboardRenderer({ object }: ObjectRendererProps) {
           >
             {data.name}
           </Text>
-          <Text position={[0, 2.12, 0]} fontSize={0.11} color={SCENE.violetSoft} anchorX="center" anchorY="middle">
+          <Text font={SCENE_FONT} position={[0, 2.12, 0]} fontSize={0.11} color={SCENE.violetSoft} anchorX="center" anchorY="middle">
             {`${data.items.length} items`}
           </Text>
           {rows.map(([status, count], i) => (
             <Text
+          font={SCENE_FONT}
               key={status}
               position={[0, 1.86 - i * 0.26, 0]}
               fontSize={0.14}
@@ -372,9 +389,11 @@ function MeetingTableRenderer({ object }: ObjectRendererProps) {
         <cylinderGeometry args={[1.5, 1.5, 0.09, 40]} />
         <meshStandardMaterial color={SCENE.wood} roughness={0.55} metalness={0.05} />
       </mesh>
-      <mesh position={[0, 0.785, 0]}>
-        <torusGeometry args={[1.5, 0.035, 8, 48]} />
-        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.25} />
+      {/* Rim hugs the tabletop edge — laid FLAT (the unrotated torus stood
+          upright like a hoop over the table) and kept quiet. */}
+      <mesh position={[0, 0.785, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.5, 0.03, 8, 48]} />
+        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.2} />
       </mesh>
       {/* Pedestal column. */}
       <mesh castShadow position={[0, 0.37, 0]}>
