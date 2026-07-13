@@ -128,7 +128,12 @@ export class SpaceGateway
       );
 
       client.emit('presence:sync', others);
-      client.to(roomKey).emit('player:joined', state);
+      // Exclude the user's own other sockets (iframe + pop-out tabs): telling
+      // them about this join would spawn a ghost of themselves.
+      client
+        .to(roomKey)
+        .except(roomKeys.user(auth.tenantId, auth.userId))
+        .emit('player:joined', state);
       this.logger.log(`${auth.name} joined ${roomKey}`);
 
       // Analytics: stamp join time on the socket so disconnect can report the
@@ -149,9 +154,23 @@ export class SpaceGateway
   async handleDisconnect(client: Socket): Promise<void> {
     const auth = (client as AppSocket).data;
     if (!auth) return;
-    this.tick.discard(roomKeys.space(auth.tenantId, auth.spaceId), auth.userId);
-    await this.presence.leave(auth.tenantId, auth.spaceId, auth.userId);
-    this.server.to(roomKeys.space(auth.tenantId, auth.spaceId)).emit('player:left', auth.userId);
+
+    // Multi-session: the same user may still be connected from another tab
+    // (iframe + pop-out). Only despawn on the LAST socket for this space —
+    // otherwise closing one tab makes the user vanish for everyone.
+    const siblings = await this.server
+      .in(roomKeys.user(auth.tenantId, auth.userId))
+      .fetchSockets();
+    const stillPresent = siblings.some(
+      (s) =>
+        s.id !== client.id &&
+        (s.data as { spaceId?: string } | undefined)?.spaceId === auth.spaceId,
+    );
+    if (!stillPresent) {
+      this.tick.discard(roomKeys.space(auth.tenantId, auth.spaceId), auth.userId);
+      await this.presence.leave(auth.tenantId, auth.spaceId, auth.userId);
+      this.server.to(roomKeys.space(auth.tenantId, auth.spaceId)).emit('player:left', auth.userId);
+    }
 
     const joinedAt = (client as AppSocket).joinedAt;
     this.analytics.track(auth.tenantId, 'space_leave', {

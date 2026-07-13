@@ -69,6 +69,9 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     index: (objectId: string) => useSlideStore.getState().index[objectId],
   };
   // __api is exposed from lib/api (available on every page, not just in-space).
+  (window as unknown as { __presence?: unknown }).__presence = () =>
+    usePresenceStore.getState().players;
+  (window as unknown as { __player?: unknown }).__player = () => usePlayerStore.getState();
   (window as unknown as { __editor?: unknown }).__editor = {
     setEditing: (on: boolean) => useEditorStore.getState().setEditing(on),
     select: (id: string) => useEditorStore.getState().select(id),
@@ -126,8 +129,14 @@ export function useSpaceSocket(spaceId: string) {
     // "Server updating…" instead of implying a network problem.
     socket.on('server:restarting', () => conn({ serverRestarting: true }));
 
-    socket.on('presence:sync', sync);
-    socket.on('player:joined', upsert);
+    // Never accept ourselves as a remote player (defense in depth — the
+    // server also excludes own sockets now, but an old server or a race
+    // would otherwise spawn a ghost of yourself from a second tab).
+    const myId = () => useSessionStore.getState().me?.user.id;
+    socket.on('presence:sync', (players) => sync(players.filter((p) => p.userId !== myId())));
+    socket.on('player:joined', (p) => {
+      if (p.userId !== myId()) upsert(p);
+    });
     socket.on('players:tick', applyTick);
     socket.on('player:left', remove);
     socket.on('chat:message', (message) => {

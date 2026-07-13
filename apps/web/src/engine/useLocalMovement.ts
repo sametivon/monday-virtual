@@ -20,11 +20,18 @@ const SPEED = 4; // m/s
 const RUN_MULT = 1.8;
 const ARRIVE_RADIUS = 0.2; // m — close enough to a click-target to stop
 
+const TURN_ALPHA_BASE = 0.0001; // yaw smoothing half-life (framerate-independent)
+
 /**
  * Local avatar controls (M2): WASD/arrows, Shift to run, click-to-move via
  * playerStore.target (set by the ground click handler), G to wave, X to
  * sit/stand. Writes transform + animation to playerStore each frame; the
  * networking layer samples that store at MOVEMENT_SEND_HZ.
+ *
+ * Movement is CAMERA-RELATIVE (W walks away from the camera, like
+ * Gather/eXp) and the avatar turns smoothly toward its heading instead of
+ * snapping. Runs at useFrame priority -3 so the camera rig (-1) and
+ * billboards (0) read a settled position.
  */
 export function useLocalMovement(scene: SceneConfig) {
   const pressed = useRef<Set<string>>(new Set());
@@ -60,7 +67,7 @@ export function useLocalMovement(scene: SceneConfig) {
     };
   }, []);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     const store = usePlayerStore.getState();
 
     // Direction from keys (normalized below)…
@@ -73,7 +80,26 @@ export function useLocalMovement(scene: SceneConfig) {
         dz += v[1];
       }
     }
-    const hasKeys = dx !== 0 || dz !== 0;
+    let hasKeys = dx !== 0 || dz !== 0;
+
+    // Camera-relative input: rotate the key vector by the camera's yaw so W
+    // always walks AWAY from the camera, whatever orbit the user chose.
+    if (hasKeys) {
+      const camYaw = Math.atan2(
+        store.position[0] - state.camera.position.x,
+        store.position[2] - state.camera.position.z,
+      );
+      const cos = Math.cos(camYaw);
+      const sin = Math.sin(camYaw);
+      // out = (−dz)·forward(θ) + dx·right(θ), with forward(θ)=(sinθ,cosθ)
+      // and right(θ)=forward(θ−π/2). At the default behind-avatar view
+      // (θ=π) this reproduces the old world mapping exactly: W→(0,−1), D→(1,0).
+      const rx = -dz * sin - dx * cos;
+      const rz = -dz * cos + dx * sin;
+      dx = rx;
+      dz = rz;
+      hasKeys = dx !== 0 || dz !== 0;
+    }
 
     // Keyboard input always overrides a pending click-target.
     if (hasKeys && store.target) store.set({ target: null });
@@ -121,12 +147,23 @@ export function useLocalMovement(scene: SceneConfig) {
           ? bowlHeight(scene.amphitheater, nx, nz)
           : 0;
 
+    // Turn smoothly toward the heading (snapping reads twitchy). Movement
+    // itself stays crisp — only the yaw eases.
+    const targetYaw = Math.atan2(vx, vz);
+    const alpha = 1 - Math.pow(TURN_ALPHA_BASE, delta);
+    const rotation = store.rotation + shortestArc(targetYaw - store.rotation) * alpha;
+
     store.set({
       position: [nx, ny, nz],
-      rotation: Math.atan2(vx, vz),
+      rotation,
       animation: isRunning ? AvatarAnimation.RUN : AvatarAnimation.WALK,
     });
-  });
+  }, -3);
+}
+
+/** Wrap an angle delta to [-π, π] so yaw lerps take the short way around. */
+function shortestArc(delta: number): number {
+  return ((delta + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
 }
 
 function clamp(v: number, min: number, max: number): number {

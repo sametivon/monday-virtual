@@ -290,13 +290,15 @@ function LocalAvatar({ scene }: { scene: WorldManifest['scene'] }) {
   const reaction = usePresenceStore((s) => (myId ? s.reactions[myId] : undefined));
   useLocalMovement(scene);
 
+  // Priority -2: after movement (-3), before the camera rig (-1) and
+  // billboards (0) — nameplates read a settled avatar + camera every frame.
   useFrame(() => {
     const { position, rotation } = usePlayerStore.getState();
     if (ref.current) {
       ref.current.position.set(position[0], position[1], position[2]);
       ref.current.rotation.y = rotation;
     }
-  });
+  }, -2);
 
   const avatarConfig = (me?.user.avatarConfig ?? {}) as {
     modelId?: string;

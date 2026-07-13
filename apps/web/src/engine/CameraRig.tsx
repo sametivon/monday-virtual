@@ -60,7 +60,9 @@ export function CameraRig({
       clamp(state.camera.position.z, minZ + WALL_MARGIN, maxZ - WALL_MARGIN),
     );
     controls.update();
-  });
+    // Priority -1: after avatar writes (-2/-3), before billboards/labels (0),
+    // so name pills and object labels never lag the camera by a frame.
+  }, -1);
 
   return null;
 }

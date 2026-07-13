@@ -69,7 +69,7 @@ export function RemoteAvatar({ player }: { player: PlayerState }) {
     group.rotation.y = current.yaw;
 
     if (t.animation !== animation) setAnimation(t.animation);
-  });
+  }, -2);
 
   const config = (player.avatarConfig ?? {}) as {
     modelId?: string;
@@ -84,7 +84,7 @@ export function RemoteAvatar({ player }: { player: PlayerState }) {
         position={[0, 0, 0]}
         animation={animation}
         name={player.name}
-        color={config.color ?? '#00b894'}
+        color={config.color ?? '#6c5ce7'}
         modelId={config.modelId ?? 'default'}
         parts={config.parts}
         customModelUrl={config.customModelUrl}
