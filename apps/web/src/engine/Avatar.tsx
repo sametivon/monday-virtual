@@ -21,21 +21,21 @@ import { usePlayerStore } from '@/stores/playerStore';
  */
 // `?v=N` busts browser/useGLTF caches — bump when build-avatars.mjs reruns.
 export const AVATAR_MODELS: Record<string, { file: string; label: string }> = {
-  default: { file: '/avatars/office/Suit_M.glb?v=4', label: 'Suit' },
-  suit_m: { file: '/avatars/office/Suit_M.glb?v=4', label: 'Suit' },
-  casual_m: { file: '/avatars/office/Casual_M.glb?v=4', label: 'Casual' },
-  hoodie_m: { file: '/avatars/office/Hoodie_M.glb?v=4', label: 'Hoodie' },
-  jacket_m: { file: '/avatars/office/Jacket_M.glb?v=4', label: 'Jacket' },
-  suit_w: { file: '/avatars/office/Suit_W.glb?v=4', label: 'Suit' },
-  formal_w: { file: '/avatars/office/Formal_W.glb?v=4', label: 'Formal' },
-  casual_w: { file: '/avatars/office/Casual_W.glb?v=4', label: 'Casual' },
-  jacket_w: { file: '/avatars/office/Jacket_W.glb?v=4', label: 'Jacket' },
+  default: { file: '/avatars/office/Suit_M.glb?v=5', label: 'Suit' },
+  suit_m: { file: '/avatars/office/Suit_M.glb?v=5', label: 'Suit' },
+  casual_m: { file: '/avatars/office/Casual_M.glb?v=5', label: 'Casual' },
+  hoodie_m: { file: '/avatars/office/Hoodie_M.glb?v=5', label: 'Hoodie' },
+  jacket_m: { file: '/avatars/office/Jacket_M.glb?v=5', label: 'Jacket' },
+  suit_w: { file: '/avatars/office/Suit_W.glb?v=5', label: 'Suit' },
+  formal_w: { file: '/avatars/office/Formal_W.glb?v=5', label: 'Formal' },
+  casual_w: { file: '/avatars/office/Casual_W.glb?v=5', label: 'Casual' },
+  jacket_w: { file: '/avatars/office/Jacket_W.glb?v=5', label: 'Jacket' },
   // Legacy KayKit ids → office equivalents.
-  knight: { file: '/avatars/office/Suit_M.glb?v=4', label: 'Suit' },
-  mage: { file: '/avatars/office/Formal_W.glb?v=4', label: 'Formal' },
-  rogue: { file: '/avatars/office/Casual_M.glb?v=4', label: 'Casual' },
-  barbarian: { file: '/avatars/office/Jacket_M.glb?v=4', label: 'Jacket' },
-  rogue_hooded: { file: '/avatars/office/Hoodie_M.glb?v=4', label: 'Hoodie' },
+  knight: { file: '/avatars/office/Suit_M.glb?v=5', label: 'Suit' },
+  mage: { file: '/avatars/office/Formal_W.glb?v=5', label: 'Formal' },
+  rogue: { file: '/avatars/office/Casual_M.glb?v=5', label: 'Casual' },
+  barbarian: { file: '/avatars/office/Jacket_M.glb?v=5', label: 'Jacket' },
+  rogue_hooded: { file: '/avatars/office/Hoodie_M.glb?v=5', label: 'Hoodie' },
 };
 
 const CLIPS: Record<AvatarAnimation, string> = {
