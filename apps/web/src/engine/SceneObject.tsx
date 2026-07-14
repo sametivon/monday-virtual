@@ -78,10 +78,12 @@ function handleInteraction(object: SceneObjectDTO) {
 
   if (action === 'sit' || (object.type === 'CHAIR' && action !== 'none')) {
     const { position, rotation } = object.transform;
-    const sitRotation = (object.config as { sitRotation?: number }).sitRotation ?? rotation[1];
+    // Face wherever the chair CURRENTLY points. config.sitRotation is frozen
+    // at seed time and goes stale the moment a chair is moved/rotated in the
+    // editor — sitting sideways on your own furniture (Sam's lobby).
     usePlayerStore.getState().set({
       position: [position[0], position[1], position[2]],
-      rotation: sitRotation,
+      rotation: rotation[1],
       animation: AvatarAnimation.SIT,
       target: null,
     });

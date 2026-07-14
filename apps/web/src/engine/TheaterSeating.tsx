@@ -97,10 +97,10 @@ export function TheaterSeating({
       return;
     }
     const { position, rotation } = object.transform;
-    const sitRotation = (object.config as { sitRotation?: number }).sitRotation ?? rotation[1];
+    // Current transform yaw, not the seed-frozen config.sitRotation.
     usePlayerStore.getState().set({
       position: [position[0], position[1], position[2]],
-      rotation: sitRotation,
+      rotation: rotation[1],
       animation: AvatarAnimation.SIT,
       target: null,
     });
