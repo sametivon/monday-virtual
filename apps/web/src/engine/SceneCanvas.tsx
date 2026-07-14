@@ -26,6 +26,7 @@ import { useTiledPbr } from './materials';
 import { RemoteAvatar } from './RemoteAvatar';
 import { Room } from './Room';
 import { SceneObjectMesh } from './SceneObject';
+import { seatRegistry } from './seatRegistry';
 import { TheaterSeating } from './TheaterSeating';
 import { useLocalMovement } from './useLocalMovement';
 
@@ -72,6 +73,15 @@ export function SceneCanvas({ manifest, onInteract }: { manifest: WorldManifest;
         rest.push(o);
       }
     }
+    // Every chair (theater or office) is a snap target for the X shortcut.
+    seatRegistry.seats = manifest.objects
+      .filter((o) => o.type === ObjectType.CHAIR)
+      .map((o) => ({
+        x: o.transform.position[0],
+        y: o.transform.position[1],
+        z: o.transform.position[2],
+        yaw: o.transform.rotation[1],
+      }));
     return { theaterSeats: seats, otherObjects: rest };
   }, [manifest.objects]);
 

@@ -66,7 +66,7 @@ const namesSeen = (page) =>
     // WASD camera-relative: W direction before vs after a big orbit.
     // (background tabs throttle rAF — the frame loop only runs when front)
     await tabA.bringToFront();
-    await sleep(500);
+    await sleep(1500); // rAF must resume before keys register (throttled while backgrounded)
     const posOf = (p) => p.evaluate(() => window.__player().position);
     const before1 = await posOf(tabA);
     await tabA.keyboard.down('KeyW'); await sleep(700); await tabA.keyboard.up('KeyW'); await sleep(400);

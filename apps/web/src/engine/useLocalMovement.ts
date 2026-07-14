@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { AvatarAnimation, bowlHeight, inStageZone, type SceneConfig } from '@mvs/shared';
 import { usePlayerStore } from '@/stores/playerStore';
+import { seatRegistry } from './seatRegistry';
 
 const KEYS: Record<string, [number, number]> = {
   KeyW: [0, -1],
@@ -48,11 +49,27 @@ export function useLocalMovement(scene: SceneConfig) {
         store.set({ animation: AvatarAnimation.WAVE, target: null });
       }
       if (e.code === 'KeyX') {
-        store.set({
-          animation:
-            store.animation === AvatarAnimation.SIT ? AvatarAnimation.IDLE : AvatarAnimation.SIT,
-          target: null,
-        });
+        if (store.animation === AvatarAnimation.SIT) {
+          store.set({ animation: AvatarAnimation.IDLE, target: null });
+        } else {
+          // Snap onto the nearest chair within reach — X in a seat row used
+          // to sit you in mid-air between two seats.
+          const [px, , pz] = store.position;
+          let best: (typeof seatRegistry.seats)[number] | null = null;
+          let bestD = 1.3 * 1.3;
+          for (const seat of seatRegistry.seats) {
+            const d = (seat.x - px) ** 2 + (seat.z - pz) ** 2;
+            if (d < bestD) {
+              bestD = d;
+              best = seat;
+            }
+          }
+          store.set({
+            ...(best ? { position: [best.x, best.y, best.z] as [number, number, number], rotation: best.yaw } : {}),
+            animation: AvatarAnimation.SIT,
+            target: null,
+          });
+        }
       }
     };
     const up = (e: KeyboardEvent) => {
