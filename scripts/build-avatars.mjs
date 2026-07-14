@@ -29,6 +29,11 @@ const SIT_DELTAS = {
   'UpperLeg.R': { axis: [1, 0, 0], deg: -85 },
   'LowerLeg.L': { axis: [1, 0, 0], deg: 85 },
   'LowerLeg.R': { axis: [1, 0, 0], deg: 85 },
+  // Hands rest on the lap — straight-down idle arms speared the seat sides.
+  'UpperArm.L': { axis: [1, 0, 0], deg: -22 },
+  'UpperArm.R': { axis: [1, 0, 0], deg: -22 },
+  'LowerArm.L': { axis: [1, 0, 0], deg: -40 },
+  'LowerArm.R': { axis: [1, 0, 0], deg: -40 },
   Spine: { axis: [1, 0, 0], deg: 8 },
 };
 /** Seated hip height — chair seat pans sit ~0.45m; hips land just above. */

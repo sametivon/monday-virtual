@@ -42,6 +42,21 @@ async function bootstrap() {
   const port = config.get('API_PORT', { infer: true });
   await app.listen(port);
   new Logger('Bootstrap').log(`API listening on :${port} (prefix /api)`);
+
+  // Free-tier keep-alive: ping our own public URL + the realtime service
+  // every 5 minutes. Render counts proxied self-traffic as inbound activity,
+  // so the pair never spins down while either is awake (the GitHub cron only
+  // fires ~hourly in practice — it resurrects, this sustains). Also keeps
+  // the event-reminder cron honest.
+  const keepAlive = process.env.KEEPALIVE_URLS;
+  if (keepAlive) {
+    const urls = keepAlive.split(',').map((u) => u.trim()).filter(Boolean);
+    setInterval(() => {
+      for (const url of urls) {
+        void fetch(url, { signal: AbortSignal.timeout(30_000) }).catch(() => undefined);
+      }
+    }, 5 * 60_000).unref();
+  }
 }
 
 void bootstrap();

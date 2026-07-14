@@ -23,6 +23,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: KEEPALIVE_URLS
+        value: https://mvs-api-e7o2.onrender.com/health,https://mvs-realtime.onrender.com/health
       - key: WEB_PUBLIC_URL # the Vercel app URL, e.g. https://mondayvirtual.eu
         sync: false
       - key: DATABASE_URL # Neon POOLED connection string
@@ -76,6 +78,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: KEEPALIVE_URLS
+        value: https://mvs-api-e7o2.onrender.com/health,https://mvs-realtime.onrender.com/health
       - key: WEB_PUBLIC_URL
         sync: false
       - key: DATABASE_URL # Neon POOLED (realtime reads events/presence)

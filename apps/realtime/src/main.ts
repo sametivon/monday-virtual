@@ -41,6 +41,21 @@ async function bootstrap() {
   const port = config.get('REALTIME_PORT', { infer: true });
   await app.listen(port);
   new Logger('Bootstrap').log(`Realtime (Socket.IO) listening on :${port} namespace /space`);
+
+  // Free-tier keep-alive: ping our own public URL + the API every 5 minutes.
+  // Requests go through Render's proxy, which counts them as inbound traffic,
+  // so neither service spins down while the other is awake. (The GitHub
+  // Actions cron still exists as the resurrector, but its schedule degrades
+  // to hourly on busy runners — this is the reliable heartbeat.)
+  const keepAlive = process.env.KEEPALIVE_URLS;
+  if (keepAlive) {
+    const urls = keepAlive.split(',').map((u) => u.trim()).filter(Boolean);
+    setInterval(() => {
+      for (const url of urls) {
+        void fetch(url, { signal: AbortSignal.timeout(30_000) }).catch(() => undefined);
+      }
+    }, 5 * 60_000).unref();
+  }
 }
 
 void bootstrap();

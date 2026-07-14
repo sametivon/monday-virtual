@@ -30,6 +30,10 @@ export class RedisIoAdapter extends IoAdapter {
     const server = super.createIOServer(port, {
       ...options,
       cors: { origin: [this.corsOrigin], credentials: true },
+      // Free-tier instances get throttled CPU; brief event-loop stalls must
+      // not read as dead connections (default pingTimeout is 20s).
+      pingInterval: 25000,
+      pingTimeout: 60000,
     });
     if (this.adapterConstructor) {
       server.adapter(this.adapterConstructor);
